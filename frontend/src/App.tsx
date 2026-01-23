@@ -1,4 +1,5 @@
-import { initializeApp } from "firebase/app";
+import { auth } from "./utils/firebase";
+//import { initializeApp } from "firebase/app";
 import { Signin } from "./components/Signin";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
@@ -9,22 +10,23 @@ import { ProblemList } from "./components/ProblemList";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { About } from "./components/About";
 import { Landing } from "./components/Landing";
-import { Submissions } from "./components/Sumissions";
+import { Submissions } from "./components/Submissions";
 import { Leaderboard } from "./components/LeaderBoard";
+import { AdminPage } from "./components/AdminPage";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAjjsbl9eSDWSmfrWpFPap2uGuwONZ2N4g",
-  authDomain: "leetcode-clone-c39eb.firebaseapp.com",
-  projectId: "leetcode-clone-c39eb",
-  storageBucket: "leetcode-clone-c39eb.appspot.com",
-  messagingSenderId: "66814187798",
-  appId: "1:66814187798:web:a6b3702e191448722dd837",
-  measurementId: "G-ET5FNB5WCN"
-};
+// const firebaseConfig = {
+//   apiKey: "AIzaSyAjjsbl9eSDWSmfrWpFPap2uGuwONZ2N4g",
+//   authDomain: "leetcode-clone-c39eb.firebaseapp.com",
+//   projectId: "leetcode-clone-c39eb",
+//   storageBucket: "leetcode-clone-c39eb.appspot.com",
+//   messagingSenderId: "66814187798",
+//   appId: "1:66814187798:web:a6b3702e191448722dd837",
+//   measurementId: "G-ET5FNB5WCN"
+// };
 
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// // Initialize Firebase
+// export const app = initializeApp(firebaseConfig);
+// export const auth = getAuth(app);
 
 function App() {
   return (
@@ -39,13 +41,6 @@ function StoreApp() {
   const [leaderboardData, setLeaderboardData] = useState<
     { image: string; name: string; points: number; id: string }[]
   >([]);
-
-  const problemList = [
-    { id: "1", problemName: "Two Sum", tags: ["Array", "Hash Table"] },
-    { id: "2", problemName: "Reverse String", tags: ["String"] },
-    { id: "3", problemName: "Palindrome Check", tags: ["String"] },
-    { id: "4", problemName: "Merge Intervals", tags: ["Array", "Sorting"] },
-  ];
 
   useEffect(() => {
     onAuthStateChanged(auth, function (user) {
@@ -125,19 +120,18 @@ function StoreApp() {
   }
   
   return (
-    <div className="place-items-center grid">
-      <div className="max-w-screen-lg w-full">
-        <Router>
-          <Topbar />
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/activity" element={<Submissions />} />
-            <Route path="/problems" element={<ProblemList problemList={problemList} />} />
-            <Route path="/leaderboard" element={<Leaderboard leaderboard={leaderboardData} />} />
-          </Routes>
-        </Router>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+      <Router>
+        <Topbar />
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/activity" element={<Submissions />} />
+                      <Route path="/problems" element={<ProblemList />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/leaderboard" element={<Leaderboard leaderboard={leaderboardData} />} />
+        </Routes>
+      </Router>
     </div>
   );
 }

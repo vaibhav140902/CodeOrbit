@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
-import { auth } from "../App";
-
+//import { auth } from "../App";
+import { auth } from "../utils/firebase";
 export const Topbar = () => {
   const location = useLocation();
   
@@ -29,6 +29,7 @@ export const Topbar = () => {
               { path: "/leaderboard", label: "Leaderboard" },
               { path: "/activity", label: "Activity" },
               { path: "/about", label: "About" },
+              { path: "/admin", label: "Admin" },
             ].map((link) => (
               <Link
                 key={link.path}
