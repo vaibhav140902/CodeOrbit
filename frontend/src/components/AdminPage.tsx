@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { db } from "../utils/firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { db, auth } from "../utils/firebase";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, setDoc } from "firebase/firestore";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 interface Problem {
   id: string;
@@ -65,6 +66,37 @@ export const AdminPage = () => {
     }
   };
 
+  // NEW: Create admin account function
+  const createAdminAccount = async () => {
+    try {
+      setLoading(true);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        'admin@test.com',
+        'admin123'
+      );
+      
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email: 'admin@test.com',
+        isAdmin: true,
+        points: 0,
+        createdAt: new Date()
+      });
+      
+      alert('✅ Admin account created!\n\nEmail: admin@test.com\nPassword: admin123\n\nYou can now sign in with these credentials.');
+      fetchUsers();
+    } catch (error: any) {
+      if (error.code === 'auth/email-already-in-use') {
+        alert('Admin account already exists! Use: admin@test.com / admin123');
+      } else {
+        console.error('Error creating admin:', error);
+        alert('Error: ' + error.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddProblem = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -125,6 +157,15 @@ export const AdminPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white py-12 px-6">
       <div className="max-w-7xl mx-auto">
+        {/* CREATE ADMIN BUTTON - FIXED POSITION */}
+        <button 
+          onClick={createAdminAccount}
+          disabled={loading}
+          className="fixed top-24 right-8 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 rounded-xl font-bold shadow-2xl hover:shadow-green-500/50 transform hover:scale-105 transition-all disabled:opacity-50 z-50"
+        >
+          🔐 Create Admin Account
+        </button>
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-5xl font-bold bg-gradient-to-r from-red-400 to-pink-500 bg-clip-text text-transparent mb-4">

@@ -1,11 +1,27 @@
-import { Link, useLocation } from "react-router-dom";
-//import { auth } from "../App";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
 import { auth } from "../utils/firebase";
+import { useAuth } from "../hooks/useAuth";
+
 export const Topbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  const handleLogout = async () => {
+    if (!confirm('Are you sure you want to logout?')) return;
+    
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      alert('Failed to logout');
+    }
   };
 
   return (
@@ -44,13 +60,35 @@ export const Topbar = () => {
               </Link>
             ))}
             
-            {/* Logout Button */}
-            <button
-              onClick={() => auth.signOut()}
-              className="ml-4 px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-red-500/50 hover:scale-105 active:scale-95"
-            >
-              Logout
-            </button>
+            {/* Auth Buttons */}
+            {user ? (
+              <div className="flex items-center gap-3 ml-4">
+                <span className="text-gray-400 text-sm">
+                  {user.email}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-red-500/50 hover:scale-105 active:scale-95"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2 ml-4">
+                <Link
+                  to="/login"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-blue-500/50 hover:scale-105 active:scale-95"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/signup"
+                  className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-green-500/50 hover:scale-105 active:scale-95"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
