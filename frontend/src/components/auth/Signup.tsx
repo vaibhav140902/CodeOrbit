@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../utils/firebase';
+import { auth } from '../../utils/firebase';
 import { useNavigate, Link } from 'react-router-dom';
 
 export const Signup = () => {
@@ -26,30 +25,22 @@ export const Signup = () => {
 
     setLoading(true);
     try {
-      // Create auth user
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log('Creating authentication account...');
+      await createUserWithEmailAndPassword(auth, email, password);
       
-      // Create user document in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        email: email,
-        isAdmin: false,
-        points: 0,
-        createdAt: new Date(),
-        displayName: email.split('@')[0]
-      });
-
-      alert('✅ Account created successfully! Welcome to Vaibhav\'s Code!');
-      navigate('/problems');
+      console.log('✅ Auth account created successfully!');
+      alert('✅ Account created! You can now sign in.');
+      navigate('/login');
     } catch (error: any) {
-      console.error('Error signing up:', error);
+      console.error('Error:', error);
       if (error.code === 'auth/email-already-in-use') {
-        alert('This email is already registered! Please sign in instead.');
+        alert('This email is already registered!');
       } else if (error.code === 'auth/invalid-email') {
         alert('Invalid email address!');
       } else if (error.code === 'auth/weak-password') {
-        alert('Password is too weak! Use at least 6 characters.');
+        alert('Password is too weak!');
       } else {
-        alert('Error creating account: ' + error.message);
+        alert('Error: ' + error.message);
       }
     } finally {
       setLoading(false);
@@ -59,7 +50,6 @@ export const Signup = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
             <span className="font-mono">{"<"}</span>
@@ -68,7 +58,6 @@ export const Signup = () => {
           </div>
         </div>
 
-        {/* Sign Up Card */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 p-8 rounded-2xl shadow-2xl">
           <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
           <p className="text-gray-400 mb-8">Join thousands of coders today</p>
