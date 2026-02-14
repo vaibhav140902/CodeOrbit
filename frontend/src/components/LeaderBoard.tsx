@@ -1,157 +1,231 @@
-export const Leaderboard = ({
-  leaderboard,
-}: {
-  leaderboard: { image: string; name: string; points: number; id: string }[];
-}) => {
-  const getRankBadge = (index: number) => {
-    if (index === 0) return "🥇";
-    if (index === 1) return "🥈";
-    if (index === 2) return "🥉";
-    return `#${index + 1}`;
-  };
+import { useEffect, useMemo, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../utils/firebase";
+import { useAuth } from "../hooks/useAuth";
 
-  const getRankColor = (index: number) => {
-    if (index === 0) return "from-yellow-400 to-yellow-600";
-    if (index === 1) return "from-gray-300 to-gray-500";
-    if (index === 2) return "from-orange-400 to-orange-600";
-    return "from-blue-500 to-purple-600";
-  };
+interface LeaderboardRow {
+  uid: string;
+  displayName: string;
+  email: string;
+  avatarSeed: string;
+  score: number;
+  solvedCount: number;
+  easySolved: number;
+  mediumSolved: number;
+  hardSolved: number;
+  totalSubmissions: number;
+  totalAccepted: number;
+  acceptanceRate: number;
+}
+
+interface RankedRow extends LeaderboardRow {
+  rank: number;
+}
+
+const badgeClassByRank = (rank: number): string => {
+  if (rank === 1) return "border-yellow-500/40 bg-yellow-500/10";
+  if (rank === 2) return "border-slate-400/40 bg-slate-400/10";
+  if (rank === 3) return "border-orange-500/40 bg-orange-500/10";
+  return "border-[color:var(--border)] bg-[color:var(--bg-surface)]";
+};
+
+const safeNumber = (value: unknown): number => {
+  const number = Number(value ?? 0);
+  return Number.isFinite(number) ? number : 0;
+};
+
+export const Leaderboard = () => {
+  const { user } = useAuth();
+  const [rows, setRows] = useState<RankedRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        setErrorMessage(null);
+        const snapshot = await getDocs(collection(db, "leaderboard"));
+
+        const mapped = snapshot.docs.map((entry) => {
+          const data = entry.data();
+          return {
+            uid: String(data.uid ?? entry.id),
+            displayName: String(data.displayName ?? "User"),
+            email: String(data.email ?? ""),
+            avatarSeed: String(data.avatarSeed ?? entry.id),
+            score: safeNumber(data.score),
+            solvedCount: safeNumber(data.solvedCount),
+            easySolved: safeNumber(data.easySolved),
+            mediumSolved: safeNumber(data.mediumSolved),
+            hardSolved: safeNumber(data.hardSolved),
+            totalSubmissions: safeNumber(data.totalSubmissions),
+            totalAccepted: safeNumber(data.totalAccepted),
+            acceptanceRate: safeNumber(data.acceptanceRate),
+          } as LeaderboardRow;
+        });
+
+        mapped.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          if (b.solvedCount !== a.solvedCount) return b.solvedCount - a.solvedCount;
+          if (b.acceptanceRate !== a.acceptanceRate) return b.acceptanceRate - a.acceptanceRate;
+          if (b.totalAccepted !== a.totalAccepted) return b.totalAccepted - a.totalAccepted;
+          return a.displayName.localeCompare(b.displayName);
+        });
+
+        const ranked = mapped.map((entry, index) => ({ ...entry, rank: index + 1 }));
+        setRows(ranked);
+      } catch (error: unknown) {
+        const errorCode = (error as { code?: string }).code;
+        if (errorCode === "permission-denied") {
+          setErrorMessage(
+            "Permission denied while loading leaderboard. Deploy updated Firestore rules and sign in again."
+          );
+        } else {
+          console.error("Error loading leaderboard:", error);
+          setErrorMessage("Could not load leaderboard right now.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaderboard();
+  }, []);
+
+  const currentUserRow = useMemo(() => {
+    if (!user) return null;
+    return rows.find((entry) => entry.uid === user.uid) ?? null;
+  }, [rows, user]);
+
+  const percentile = useMemo(() => {
+    if (!currentUserRow || rows.length <= 1) return 0;
+    return Number((((rows.length - currentUserRow.rank) / (rows.length - 1)) * 100).toFixed(1));
+  }, [currentUserRow, rows.length]);
+
+  const totalScore = rows.reduce((sum, row) => sum + row.score, 0);
+  const averageScore = rows.length > 0 ? Math.round(totalScore / rows.length) : 0;
+
+  if (loading) {
+    return (
+      <div className="app-shell flex items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-b-4 border-[color:var(--accent)]" />
+          <p className="text-muted">Loading leaderboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white py-12 px-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
-            🏆 Leaderboard
-          </h1>
-          <p className="text-gray-400 text-lg">Top performers this month</p>
-        </div>
-
-        {/* Leaderboard Container */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl">
-          {leaderboard.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-6xl mb-4">🎯</div>
-              <p className="text-2xl text-gray-400 mb-2">No users on the leaderboard yet</p>
-              <p className="text-gray-500">Be the first to solve problems!</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Top 3 Podium */}
-              {leaderboard.slice(0, 3).length === 3 && (
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  {/* 2nd Place */}
-                  <div className="order-1 pt-12">
-                    <div className="bg-gradient-to-br from-gray-400 to-gray-600 rounded-xl p-6 text-center transform hover:scale-105 transition-all shadow-xl">
-                      <div className="text-4xl mb-2">🥈</div>
-                      <img
-                        src={leaderboard[1].image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${leaderboard[1].id}`}
-                        alt={leaderboard[1].name}
-                        className="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-gray-300"
-                      />
-                      <div className="font-bold text-lg">{leaderboard[1].name}</div>
-                      <div className="text-2xl font-bold mt-2">{leaderboard[1].points}</div>
-                      <div className="text-sm text-gray-200">points</div>
-                    </div>
-                  </div>
-
-                  {/* 1st Place */}
-                  <div className="order-2">
-                    <div className="bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl p-6 text-center transform hover:scale-105 transition-all shadow-2xl">
-                      <div className="text-5xl mb-2">👑</div>
-                      <img
-                        src={leaderboard[0].image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${leaderboard[0].id}`}
-                        alt={leaderboard[0].name}
-                        className="w-24 h-24 rounded-full mx-auto mb-3 border-4 border-yellow-300"
-                      />
-                      <div className="font-bold text-xl text-gray-900">{leaderboard[0].name}</div>
-                      <div className="text-3xl font-bold mt-2 text-gray-900">{leaderboard[0].points}</div>
-                      <div className="text-sm text-gray-800">points</div>
-                    </div>
-                  </div>
-
-                  {/* 3rd Place */}
-                  <div className="order-3 pt-12">
-                    <div className="bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl p-6 text-center transform hover:scale-105 transition-all shadow-xl">
-                      <div className="text-4xl mb-2">🥉</div>
-                      <img
-                        src={leaderboard[2].image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${leaderboard[2].id}`}
-                        alt={leaderboard[2].name}
-                        className="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-orange-300"
-                      />
-                      <div className="font-bold text-lg">{leaderboard[2].name}</div>
-                      <div className="text-2xl font-bold mt-2">{leaderboard[2].points}</div>
-                      <div className="text-sm text-gray-200">points</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Rest of the rankings */}
-              <div className="space-y-3 mt-8">
-                {leaderboard.slice(3).map((user, idx) => {
-                  const actualIndex = idx + 3;
-                  return (
-                    <div
-                      key={user.id}
-                      className="bg-gray-900/50 border border-gray-700 rounded-xl p-5 hover:bg-gray-900 hover:border-purple-500 transition-all duration-300 group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 flex-1">
-                          {/* Rank */}
-                          <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${getRankColor(actualIndex)} flex items-center justify-center font-bold text-lg shadow-lg`}>
-                            #{actualIndex + 1}
-                          </div>
-
-                          {/* Avatar */}
-                          <img
-                            src={user.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`}
-                            alt={user.name}
-                            className="w-12 h-12 rounded-full border-2 border-gray-600 group-hover:border-purple-500 transition-colors"
-                          />
-
-                          {/* User Info */}
-                          <div className="flex-1">
-                            <div className="font-semibold text-lg">{user.name}</div>
-                            <div className="text-sm text-gray-500">ID: {user.id}</div>
-                          </div>
-                        </div>
-
-                        {/* Points */}
-                        <div className="text-right">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
-                            {user.points}
-                          </div>
-                          <div className="text-sm text-gray-500">points</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+    <div className="app-shell">
+      <div className="page-container">
+        <div className="mb-8">
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Competition</p>
+          <h1 className="mt-2 text-5xl font-bold">Leaderboard</h1>
+          <p className="text-muted mt-2 text-lg">Track rank, solved problems, and acceptance efficiency.</p>
+          {errorMessage && (
+            <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">
+              {errorMessage}
+            </p>
           )}
         </div>
 
-        {/* Footer Stats */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-xl p-4">
-            <div className="text-2xl font-bold text-blue-400">{leaderboard.length}</div>
-            <div className="text-sm text-gray-400">Total Users</div>
+        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="surface-card p-4">
+            <p className="text-muted text-xs uppercase tracking-wide">Total Competitors</p>
+            <p className="text-3xl font-bold mt-1">{rows.length}</p>
           </div>
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-xl p-4">
-            <div className="text-2xl font-bold text-purple-400">
-              {leaderboard.reduce((sum, u) => sum + u.points, 0)}
+          <div className="surface-card p-4">
+            <p className="text-muted text-xs uppercase tracking-wide">Total Score</p>
+            <p className="text-3xl font-bold mt-1">{totalScore}</p>
+          </div>
+          <div className="surface-card p-4">
+            <p className="text-muted text-xs uppercase tracking-wide">Average Score</p>
+            <p className="text-3xl font-bold mt-1">{averageScore}</p>
+          </div>
+          <div className="surface-card p-4">
+            <p className="text-muted text-xs uppercase tracking-wide">Your Percentile</p>
+            <p className="text-3xl font-bold mt-1">{currentUserRow ? `${percentile}%` : "--"}</p>
+          </div>
+        </div>
+
+        {currentUserRow && (
+          <div className="surface-card mb-8 p-5">
+            <h2 className="text-lg font-semibold mb-3">Your Standing</h2>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm">
+              <div className="surface-soft p-3">
+                <p className="text-muted">Rank</p>
+                <p className="text-2xl font-bold">#{currentUserRow.rank}</p>
+              </div>
+              <div className="surface-soft p-3">
+                <p className="text-muted">Score</p>
+                <p className="text-2xl font-bold">{currentUserRow.score}</p>
+              </div>
+              <div className="surface-soft p-3">
+                <p className="text-muted">Solved</p>
+                <p className="text-2xl font-bold">{currentUserRow.solvedCount}</p>
+              </div>
+              <div className="surface-soft p-3">
+                <p className="text-muted">Acceptance</p>
+                <p className="text-2xl font-bold">{currentUserRow.acceptanceRate.toFixed(1)}%</p>
+              </div>
+              <div className="surface-soft p-3">
+                <p className="text-muted">Accepted</p>
+                <p className="text-2xl font-bold">{currentUserRow.totalAccepted}</p>
+              </div>
             </div>
-            <div className="text-sm text-gray-400">Total Points</div>
           </div>
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-xl p-4">
-            <div className="text-2xl font-bold text-green-400">
-              {leaderboard.length > 0 ? Math.round(leaderboard.reduce((sum, u) => sum + u.points, 0) / leaderboard.length) : 0}
+        )}
+
+        <div className="space-y-3">
+          {rows.length === 0 ? (
+            <div className="surface-card py-16 text-center">
+              <p className="text-2xl">No leaderboard data yet.</p>
+              <p className="text-muted mt-2">Submit accepted solutions to appear here.</p>
             </div>
-            <div className="text-sm text-gray-400">Avg Points</div>
-          </div>
+          ) : (
+            rows.map((row) => (
+              <div
+                key={row.uid}
+                className={`rounded-xl border px-5 py-4 transition-all ${badgeClassByRank(row.rank)} ${
+                  user?.uid === row.uid ? "ring-2 ring-[color:var(--ring)]" : ""
+                }`}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                  <div className="md:col-span-1 text-lg font-bold">#{row.rank}</div>
+                  <div className="md:col-span-4 flex items-center gap-3">
+                    <img
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${row.avatarSeed}`}
+                      alt={row.displayName}
+                      className="w-10 h-10 rounded-full border border-slate-500"
+                    />
+                    <div>
+                      <p className="font-semibold leading-tight">{row.displayName}</p>
+                      <p className="text-muted text-xs">{row.email || row.uid}</p>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 text-sm">
+                    <p className="text-muted">Solved</p>
+                    <p className="font-semibold">
+                      {row.solvedCount} <span className="text-muted text-xs">(E{row.easySolved}/M{row.mediumSolved}/H{row.hardSolved})</span>
+                    </p>
+                  </div>
+                  <div className="md:col-span-2 text-sm">
+                    <p className="text-muted">Acceptance</p>
+                    <p className="font-semibold">{row.acceptanceRate.toFixed(1)}%</p>
+                  </div>
+                  <div className="md:col-span-1 text-sm">
+                    <p className="text-muted">Accepted</p>
+                    <p className="font-semibold">{row.totalAccepted}</p>
+                  </div>
+                  <div className="md:col-span-2 text-right">
+                    <p className="text-muted text-xs uppercase tracking-wide">Score</p>
+                    <p className="text-2xl font-bold text-[color:var(--accent)]">{row.score}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

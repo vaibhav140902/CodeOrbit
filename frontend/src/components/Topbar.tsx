@@ -2,13 +2,18 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../utils/firebase";
 import { useAuth } from "../hooks/useAuth";
+import { useTheme } from "../hooks/useTheme";
 
 export const Topbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   
   const isActive = (path: string) => {
+    if (path === "/problems") {
+      return location.pathname === "/problems" || location.pathname.startsWith("/problems/");
+    }
     return location.pathname === path;
   };
 
@@ -24,72 +29,65 @@ export const Topbar = () => {
     }
   };
 
-  return (
-    <nav className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700 shadow-lg sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="flex justify-between items-center">
-          {/* Logo/Brand */}
-          <Link to="/" className="group">
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent hover:from-blue-300 hover:to-purple-400 transition-all duration-300">
-              <span className="font-mono">{"<"}</span>
-              Vaibhav's Code
-              <span className="font-mono">{"/>"}</span>
-            </div>
-          </Link>
+  const navLinks = [
+    { path: "/", label: "Home" },
+    { path: "/problems", label: "Problems" },
+    { path: "/leaderboard", label: "Leaderboard" },
+    { path: "/activity", label: "Activity" },
+    { path: "/about", label: "About" },
+    ...(isAdmin ? [{ path: "/admin", label: "Admin" }] : []),
+  ];
 
-          {/* Navigation Links */}
-          <div className="flex items-center space-x-1">
-            {[
-              { path: "/", label: "Home" },
-              { path: "/problems", label: "Problems" },
-              { path: "/leaderboard", label: "Leaderboard" },
-              { path: "/activity", label: "Activity" },
-              { path: "/about", label: "About" },
-              { path: "/admin", label: "Admin" },
-            ].map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  isActive(link.path)
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/50"
-                    : "text-gray-300 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                {link.label}
+  return (
+    <nav className="sticky top-0 z-50 border-b border-[color:var(--border)] bg-[color:var(--bg-surface)]/95 backdrop-blur">
+      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
+        <Link to="/" className="group flex items-center gap-2">
+          <span className="font-mono text-sm text-[color:var(--text-muted)]">&lt;/&gt;</span>
+          <span className="brand-gradient text-xl font-bold tracking-tight">Vaibhav&apos;s Code</span>
+        </Link>
+
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+          {navLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                isActive(link.path)
+                  ? "bg-[color:var(--accent-soft)] text-[color:var(--text-main)]"
+                  : "text-[color:var(--text-muted)] hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--text-main)]"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+
+          <button
+            onClick={toggleTheme}
+            className="btn-ghost text-sm"
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+
+          {user ? (
+            <>
+              <span className="hidden max-w-[180px] truncate text-xs text-[color:var(--text-muted)] md:block">
+                {user.email}
+              </span>
+              <button onClick={handleLogout} className="btn-danger text-sm">
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn-secondary text-sm">
+                Login
               </Link>
-            ))}
-            
-            {/* Auth Buttons */}
-            {user ? (
-              <div className="flex items-center gap-3 ml-4">
-                <span className="text-gray-400 text-sm">
-                  {user.email}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-red-500/50 hover:scale-105 active:scale-95"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-2 ml-4">
-                <Link
-                  to="/login"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-blue-500/50 hover:scale-105 active:scale-95"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/signup"
-                  className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-green-500/50 hover:scale-105 active:scale-95"
-                >
-                  Sign Up
-                </Link>
-              </div>
-            )}
-          </div>
+              <Link to="/signup" className="btn-primary text-sm">
+                Sign up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

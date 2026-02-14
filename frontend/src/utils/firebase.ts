@@ -1,16 +1,28 @@
-import { initializeApp } from "firebase/app";
+import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAjjsbl9eSDWSmfrWpFPap2uGuwONZ2N4g",
-  authDomain: "leetcode-clone-c39eb.firebaseapp.com",
-  projectId: "leetcode-clone-c39eb",
-  storageBucket: "leetcode-clone-c39eb.appspot.com",
-  messagingSenderId: "66814187798",
-  appId: "1:66814187798:web:a6b3702e191448722dd837"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-export const app = initializeApp(firebaseConfig);
+const missingFirebaseVars = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+
+if (missingFirebaseVars.length > 0) {
+  throw new Error(
+    `Missing Firebase env vars: ${missingFirebaseVars.join(
+      ", "
+    )}. Add them to frontend/.env.`
+  );
+}
+
+export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);

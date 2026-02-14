@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../utils/firebase';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTheme } from '../../hooks/useTheme';
 
 export const Signin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const handleSignin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,11 +19,14 @@ export const Signin = () => {
       navigate('/problems');
     } catch (error: any) {
       console.error('Error signing in:', error);
-      if (error.code === 'auth/user-not-found') {
+      const code = String(error?.code || "");
+      if (code.includes('api-key-not-valid')) {
+        alert('Firebase API key is invalid. Update frontend/.env with the correct key from Firebase project settings, then restart npm run dev.');
+      } else if (code === 'auth/user-not-found') {
         alert('No account found with this email!');
-      } else if (error.code === 'auth/wrong-password') {
+      } else if (code === 'auth/wrong-password') {
         alert('Incorrect password!');
-      } else if (error.code === 'auth/invalid-credential') {
+      } else if (code === 'auth/invalid-credential') {
         alert('Invalid email or password!');
       } else {
         alert('Error: ' + error.message);
@@ -32,82 +37,66 @@ export const Signin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-6">
+    <div className="app-shell flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            <span className="font-mono">{"<"}</span>
-            Vaibhav's Code
-            <span className="font-mono">{"/>"}</span>
-          </div>
+        <div className="mb-5 flex items-center justify-between">
+          <Link to="/" className="brand-gradient text-2xl font-bold">
+            Vaibhav&apos;s Code
+          </Link>
+          <button onClick={toggleTheme} className="btn-ghost text-xs">
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
         </div>
 
-        {/* Sign In Card */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 p-8 rounded-2xl shadow-2xl">
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-gray-400 mb-8">Sign in to continue coding</p>
+        <div className="surface-card p-8">
+          <h1 className="text-3xl font-bold">Welcome back</h1>
+          <p className="text-muted mt-2 mb-8">Sign in and continue your streak.</p>
 
-          <form onSubmit={handleSignin} className="space-y-6">
+          <form onSubmit={handleSignin} className="space-y-5">
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
-                Email Address
-              </label>
+              <label className="mb-2 block text-sm font-semibold text-soft">Email</label>
               <input
                 type="email"
                 placeholder="your.email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                className="field-input"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
-                Password
-              </label>
+              <label className="mb-2 block text-sm font-semibold text-soft">Password</label>
               <input
                 type="password"
-                placeholder="••••••••"
+                placeholder="********"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-900/50 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                className="field-input"
                 required
               />
+              <div className="mt-2 text-right">
+                <Link to="/forgot-password" className="text-xs text-[color:var(--accent)] hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-purple-500/50 transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                  </svg>
-                  Signing In...
-                </span>
-              ) : (
-                'Sign In'
-              )}
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 disabled:cursor-not-allowed disabled:opacity-65">
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-400">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
-                Sign Up
-              </Link>
-            </p>
+          <div className="mt-6 text-center text-sm text-muted">
+            Don&apos;t have an account?{' '}
+            <Link to="/signup" className="font-semibold text-[color:var(--accent)] hover:underline">
+              Sign up
+            </Link>
           </div>
 
           <div className="mt-4 text-center">
-            <Link to="/" className="text-gray-500 hover:text-gray-400 text-sm transition-colors">
-              ← Back to Home
+            <Link to="/" className="text-xs text-muted hover:underline">
+              Back to home
             </Link>
           </div>
         </div>

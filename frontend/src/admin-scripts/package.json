@@ -4,7 +4,10 @@
   "description": "",
   "main": "makeAdmin.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "make-admin": "node makeAdmin.js",
+    "seed-problems": "node seedProblems.js",
+    "sync-users": "node syncUsersFromAuth.js",
+    "rebuild-leaderboard": "node rebuildLeaderboard.js"
   },
   "keywords": [],
   "author": "",

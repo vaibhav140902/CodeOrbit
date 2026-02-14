@@ -1,201 +1,244 @@
-import { useState, useEffect } from "react";
-import { db } from "../utils/firebase";
+import { useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
+import { db } from "../utils/firebase";
+import { useNavigate } from "react-router-dom";
+
+type Difficulty = "Easy" | "Medium" | "Hard";
+type DifficultyFilter = Difficulty | "All";
 
 interface Problem {
   id: string;
   problemName: string;
   tags: string[];
-  difficulty?: "Easy" | "Medium" | "Hard";
+  difficulty: Difficulty;
 }
 
+const DIFFICULTY_ORDER: Difficulty[] = ["Easy", "Medium", "Hard"];
+
+const difficultyBadgeClass: Record<Difficulty, string> = {
+  Easy: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
+  Medium: "border-amber-500/30 bg-amber-500/10 text-amber-500",
+  Hard: "border-rose-500/30 bg-rose-500/10 text-rose-500",
+};
+
 export const ProblemList = () => {
+  const navigate = useNavigate();
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("All");
+  const [topicFilter, setTopicFilter] = useState("All");
 
   useEffect(() => {
     fetchProblems();
   }, []);
 
-  const fetchProblems = async () => {
-  try {
-    console.log("Fetching problems...");
-    const querySnapshot = await getDocs(collection(db, "problems"));
-    console.log("Query snapshot size:", querySnapshot.size);
-    
-    const problemsData = querySnapshot.docs.map(doc => {
-      console.log("Document data:", doc.id, doc.data());
-      return {
-        id: doc.id,
-        ...doc.data()
-      } as Problem;
-    });
-    
-    console.log("Problems fetched:", problemsData);
-    setProblems(problemsData);
-  } catch (error) {
-    console.error("Error fetching problems:", error);
-    // Log the full error object
-    console.error("Full error:", JSON.stringify(error, null, 2));
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const getDifficulty = (problem: Problem) => {
-    return problem.difficulty || "Easy";
+  const normalizeDifficulty = (value: unknown): Difficulty => {
+    if (value === "Medium" || value === "Hard") return value;
+    return "Easy";
   };
+
+  const fetchProblems = async () => {
+    try {
+      setErrorMessage(null);
+      const querySnapshot = await getDocs(collection(db, "problems"));
+      const problemsData = querySnapshot.docs.map((problemDoc) => {
+        const data = problemDoc.data();
+        const rawDifficulty = data.difficulty ?? data.Difficulty ?? data["Difficulty "];
+        const tags = Array.isArray(data.tags)
+          ? data.tags
+          : Array.isArray(data.tag)
+          ? data.tag
+          : [];
+
+        return {
+          id: problemDoc.id,
+          problemName: String(data.problemName ?? data.title ?? "Untitled Problem"),
+          tags: tags.map((tag) => String(tag)),
+          difficulty: normalizeDifficulty(rawDifficulty),
+        } as Problem;
+      });
+
+      setProblems(problemsData);
+    } catch (error: unknown) {
+      const errorCode = (error as { code?: string })?.code;
+      if (errorCode === "permission-denied") {
+        setErrorMessage("Permission denied while reading problems. Deploy rules and sign in again.");
+      } else {
+        console.error("Error fetching problems:", error);
+        setErrorMessage("Failed to load problems.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const availableTopics = useMemo(() => {
+    const tagSet = new Set<string>();
+    for (const problem of problems) {
+      for (const tag of problem.tags) {
+        tagSet.add(tag);
+      }
+    }
+    return ["All", ...Array.from(tagSet).sort((a, b) => a.localeCompare(b))];
+  }, [problems]);
+
+  const filteredProblems = useMemo(() => {
+    return problems.filter((problem) => {
+      const matchesSearch = problem.problemName.toLowerCase().includes(search.toLowerCase());
+      const matchesDifficulty = difficultyFilter === "All" || problem.difficulty === difficultyFilter;
+      const matchesTopic = topicFilter === "All" || problem.tags.includes(topicFilter);
+      return matchesSearch && matchesDifficulty && matchesTopic;
+    });
+  }, [problems, search, difficultyFilter, topicFilter]);
+
+  const problemsByDifficulty = useMemo(() => {
+    const grouped: Record<Difficulty, Problem[]> = {
+      Easy: [],
+      Medium: [],
+      Hard: [],
+    };
+
+    for (const problem of filteredProblems) {
+      grouped[problem.difficulty].push(problem);
+    }
+
+    return grouped;
+  }, [filteredProblems]);
+
+  const totalByDifficulty = useMemo(() => {
+    const grouped: Record<Difficulty, number> = { Easy: 0, Medium: 0, Hard: 0 };
+    for (const problem of problems) {
+      grouped[problem.difficulty] += 1;
+    }
+    return grouped;
+  }, [problems]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center">
+      <div className="app-shell flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading problems...</p>
+          <div className="mx-auto mb-4 h-14 w-14 animate-spin rounded-full border-b-4 border-[color:var(--accent)]" />
+          <p className="text-muted">Loading problems...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white py-12 px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
-            💻 Problems
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Solve {problems.length} coding challenges
+    <div className="app-shell">
+      <div className="page-container">
+        <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Problem bank</p>
+            <h1 className="mt-2 text-4xl font-bold">Problems</h1>
+            <p className="text-muted mt-2">Solve {problems.length} coding challenges across core interview topics.</p>
+          </div>
+          <button onClick={fetchProblems} className="btn-secondary">
+            Refresh
+          </button>
+        </section>
+
+        {errorMessage && (
+          <p className="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">
+            {errorMessage}
           </p>
-        </div>
+        )}
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 border border-green-500/30 rounded-xl p-4 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <div>
-                <div className="text-2xl font-bold">
-                  {problems.filter((p) => getDifficulty(p) === "Easy").length}
-                </div>
-                <div className="text-sm text-gray-400">Easy</div>
-              </div>
-            </div>
+        <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="surface-card p-4">
+            <p className="text-muted text-xs uppercase">Easy</p>
+            <p className="mt-1 text-3xl font-bold">{totalByDifficulty.Easy}</p>
           </div>
-          <div className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border border-yellow-500/30 rounded-xl p-4 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <div>
-                <div className="text-2xl font-bold">
-                  {problems.filter((p) => getDifficulty(p) === "Medium").length}
-                </div>
-                <div className="text-sm text-gray-400">Medium</div>
-              </div>
-            </div>
+          <div className="surface-card p-4">
+            <p className="text-muted text-xs uppercase">Medium</p>
+            <p className="mt-1 text-3xl font-bold">{totalByDifficulty.Medium}</p>
           </div>
-          <div className="bg-gradient-to-br from-red-600/20 to-red-800/20 border border-red-500/30 rounded-xl p-4 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <div>
-                <div className="text-2xl font-bold">
-                  {problems.filter((p) => getDifficulty(p) === "Hard").length}
-                </div>
-                <div className="text-sm text-gray-400">Hard</div>
-              </div>
-            </div>
+          <div className="surface-card p-4">
+            <p className="text-muted text-xs uppercase">Hard</p>
+            <p className="mt-1 text-3xl font-bold">{totalByDifficulty.Hard}</p>
           </div>
-        </div>
+        </section>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="bg-gray-900/50 border-b border-gray-700 px-6 py-4">
-            <div className="grid grid-cols-12 gap-4 font-semibold text-gray-400 text-sm uppercase">
-              <div className="col-span-1">Status</div>
-              <div className="col-span-5">Problem</div>
-              <div className="col-span-2">Difficulty</div>
-              <div className="col-span-4">Tags</div>
-            </div>
+        <section className="surface-card mb-6 p-5">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search problem..."
+              className="field-input"
+            />
+            <select
+              value={difficultyFilter}
+              onChange={(event) => setDifficultyFilter(event.target.value as DifficultyFilter)}
+              className="field-select"
+            >
+              <option value="All">All difficulties</option>
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+            <select
+              value={topicFilter}
+              onChange={(event) => setTopicFilter(event.target.value)}
+              className="field-select"
+            >
+              {availableTopics.map((topic) => (
+                <option key={topic} value={topic}>
+                  {topic === "All" ? "All topics" : topic}
+                </option>
+              ))}
+            </select>
           </div>
+        </section>
 
-          <div className="divide-y divide-gray-700">
-            {problems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">📝</div>
-                <p className="text-2xl text-gray-400 mb-2">No problems yet</p>
-                <p className="text-gray-500">Admin can add problems from the Admin page</p>
-              </div>
-            ) : (
-              problems.map((problem, index) => {
-                const difficulty = getDifficulty(problem);
-                const isSolved = index % 3 === 0;
+        <section className="space-y-6">
+          {DIFFICULTY_ORDER.map((difficulty) => (
+            <article key={difficulty} className="surface-card overflow-hidden">
+              <header className="flex items-center justify-between border-b border-[color:var(--border)] px-5 py-4">
+                <h2 className="text-xl font-semibold">{difficulty}</h2>
+                <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${difficultyBadgeClass[difficulty]}`}>
+                  {problemsByDifficulty[difficulty].length}
+                </span>
+              </header>
 
-                return (
-                  <div
-                    key={problem.id}
-                    className="px-6 py-5 hover:bg-gray-900/50 transition-colors duration-200 group cursor-pointer"
-                  >
-                    <div className="grid grid-cols-12 gap-4 items-center">
-                      <div className="col-span-1">
-                        {isSolved ? (
-                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-xs">
-                            ✓
-                          </div>
-                        ) : (
-                          <div className="w-6 h-6 border-2 border-gray-600 rounded-full group-hover:border-purple-500 transition-colors"></div>
-                        )}
-                      </div>
-
-                      <div className="col-span-5">
-                        <div className="flex items-center gap-3">
-                          <span className="text-gray-500 font-mono text-sm">
-                            {index + 1}.
-                          </span>
-                          <span className="font-semibold text-lg group-hover:text-purple-400 transition-colors">
-                            {problem.problemName}
+              <div className="divide-y divide-[color:var(--border)]">
+                {problemsByDifficulty[difficulty].length === 0 ? (
+                  <p className="text-muted px-5 py-5 text-sm">No problems for current filters.</p>
+                ) : (
+                  problemsByDifficulty[difficulty].map((problem, index) => (
+                    <button
+                      key={problem.id}
+                      onClick={() => navigate(`/problems/${problem.id}`)}
+                      className="w-full px-5 py-4 text-left transition hover:bg-[color:var(--accent-soft)]"
+                    >
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-center">
+                        <div className="font-mono text-sm text-muted md:col-span-1">{index + 1}.</div>
+                        <div className="font-semibold md:col-span-4">{problem.problemName}</div>
+                        <div className="md:col-span-2">
+                          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${difficultyBadgeClass[difficulty]}`}>
+                            {difficulty}
                           </span>
                         </div>
+                        <div className="flex flex-wrap gap-2 md:col-span-5">
+                          {problem.tags.map((tag) => (
+                            <span
+                              key={`${problem.id}-${tag}`}
+                              className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-xs text-sky-600"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-
-                      <div className="col-span-2">
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                            difficulty === "Easy"
-                              ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                              : difficulty === "Medium"
-                              ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                              : "bg-red-500/20 text-red-400 border border-red-500/30"
-                          }`}
-                        >
-                          {difficulty}
-                        </span>
-                      </div>
-
-                      <div className="col-span-4 flex flex-wrap gap-2">
-                        {problem.tags.map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-xs font-medium hover:bg-blue-500/30 transition-colors"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {problems.length > 0 && (
-          <div className="mt-8 text-center">
-            <button
-              onClick={fetchProblems}
-              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold text-lg shadow-2xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all duration-300"
-            >
-              Refresh Problems
-            </button>
-          </div>
-        )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </article>
+          ))}
+        </section>
       </div>
     </div>
   );

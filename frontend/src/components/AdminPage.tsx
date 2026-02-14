@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { db, auth } from "../utils/firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, setDoc } from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { db } from "../utils/firebase";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 
 interface Problem {
   id: string;
@@ -18,13 +17,19 @@ interface User {
   email: string;
   isAdmin: boolean;
   points: number;
-  createdAt: any;
+  createdAt?: any;
+  lastLoginAt?: any;
+  displayName?: string;
+  status?: string;
+  role?: string;
+  emailVerified?: boolean;
 }
 
 export const AdminPage = () => {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState<"problems" | "users">("problems");
+  const [usersError, setUsersError] = useState<string | null>(null);
   
   // Form states
   const [problemName, setProblemName] = useState("");
@@ -34,6 +39,8 @@ export const AdminPage = () => {
   const [examples, setExamples] = useState("");
   const [constraints, setConstraints] = useState("");
   const [loading, setLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [showAdminsOnly, setShowAdminsOnly] = useState(false);
 
   useEffect(() => {
     fetchProblems();
@@ -55,47 +62,55 @@ export const AdminPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "users"));
+      setUsersError(null);
+      const usersQuery = query(collection(db, "users"), orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(usersQuery);
       const usersData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as User));
       setUsers(usersData);
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorCode = (error as { code?: string })?.code;
+      if (errorCode === "permission-denied") {
+        setUsersError("Permission denied for users list. Deploy Firestore rules, then refresh this page.");
+        return;
+      }
       console.error("Error fetching users:", error);
+      setUsersError("Failed to fetch users.");
     }
   };
 
-  // NEW: Create admin account function
-  const createAdminAccount = async () => {
-    try {
-      setLoading(true);
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        'admin@test.com',
-        'admin123'
-      );
-      
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        email: 'admin@test.com',
-        isAdmin: true,
-        points: 0,
-        createdAt: new Date()
-      });
-      
-      alert('✅ Admin account created!\n\nEmail: admin@test.com\nPassword: admin123\n\nYou can now sign in with these credentials.');
-      fetchUsers();
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        alert('Admin account already exists! Use: admin@test.com / admin123');
-      } else {
-        console.error('Error creating admin:', error);
-        alert('Error: ' + error.message);
-      }
-    } finally {
-      setLoading(false);
-    }
+  const openAdminSetupGuide = () => {
+    alert(
+      "Admin setup:\n\n1) Create a normal user from Sign Up.\n2) Copy that user's uid from Firebase Authentication.\n3) Run this script:\n\ncd frontend/src/admin-scripts\nnode makeAdmin.js <uid>\n\nTo seed starter problems:\nnode seedProblems.js\n\nTo backfill registry from Firebase Auth:\nnode syncUsersFromAuth.js\n\nTo rebuild leaderboard from existing submissions:\nnode rebuildLeaderboard.js\n\nThis keeps users registry and ranking data production-ready."
+    );
   };
+
+  const formatTimestamp = (value: unknown) => {
+    if (!value || typeof value !== "object") return "N/A";
+    if (typeof (value as { toDate?: () => Date }).toDate === "function") {
+      return (value as { toDate: () => Date }).toDate().toLocaleString();
+    }
+    return "N/A";
+  };
+
+  const filteredUsers = users.filter((user) => {
+    const email = String(user.email || "").toLowerCase();
+    const displayName = String(user.displayName || "").toLowerCase();
+    const searchTerm = userSearch.toLowerCase();
+    const matchesSearch = email.includes(searchTerm) || displayName.includes(searchTerm);
+    const matchesAdminFilter = !showAdminsOnly || user.isAdmin;
+    return matchesSearch && matchesAdminFilter;
+  });
+
+  const recentlyActiveUsers = users.filter((user) => {
+    const ts = user.lastLoginAt;
+    if (!ts || typeof ts !== "object" || typeof ts.toDate !== "function") return false;
+    const lastLogin = ts.toDate().getTime();
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return lastLogin >= sevenDaysAgo;
+  }).length;
 
   const handleAddProblem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +124,7 @@ export const AdminPage = () => {
         description,
         examples,
         constraints,
-        createdAt: new Date()
+        createdAt: serverTimestamp()
       });
 
       alert("Problem added successfully!");
@@ -144,7 +159,9 @@ export const AdminPage = () => {
   const handleToggleAdmin = async (userId: string, currentStatus: boolean) => {
     try {
       await updateDoc(doc(db, "users", userId), {
-        isAdmin: !currentStatus
+        isAdmin: !currentStatus,
+        role: !currentStatus ? "admin" : "user",
+        updatedAt: serverTimestamp(),
       });
       alert("User admin status updated!");
       fetchUsers();
@@ -157,13 +174,12 @@ export const AdminPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white py-12 px-6">
       <div className="max-w-7xl mx-auto">
-        {/* CREATE ADMIN BUTTON - FIXED POSITION */}
+        {/* ADMIN SETUP HELP */}
         <button 
-          onClick={createAdminAccount}
-          disabled={loading}
-          className="fixed top-24 right-8 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 rounded-xl font-bold shadow-2xl hover:shadow-green-500/50 transform hover:scale-105 transition-all disabled:opacity-50 z-50"
+          onClick={openAdminSetupGuide}
+          className="fixed top-24 right-8 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 rounded-xl font-bold shadow-2xl hover:shadow-green-500/50 transform hover:scale-105 transition-all z-50"
         >
-          🔐 Create Admin Account
+          🔐 Admin Setup Help
         </button>
 
         {/* Header */}
@@ -353,9 +369,47 @@ export const AdminPage = () => {
         {/* Users Tab */}
         {activeTab === "users" && (
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-8">
-            <h2 className="text-2xl font-bold mb-6">All Users</h2>
+            <h2 className="text-2xl font-bold mb-6">Registered Users</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-4">
+                <p className="text-sm text-gray-400">Total Users</p>
+                <p className="text-2xl font-bold">{users.length}</p>
+              </div>
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-4">
+                <p className="text-sm text-gray-400">Admins</p>
+                <p className="text-2xl font-bold">{users.filter((user) => user.isAdmin).length}</p>
+              </div>
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-4">
+                <p className="text-sm text-gray-400">Active Last 7 Days</p>
+                <p className="text-2xl font-bold">{recentlyActiveUsers}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <input
+                type="text"
+                placeholder="Search by email or display name..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+              />
+              <label className="flex items-center gap-3 bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={showAdminsOnly}
+                  onChange={(e) => setShowAdminsOnly(e.target.checked)}
+                />
+                <span className="text-gray-300">Show admins only</span>
+              </label>
+            </div>
+
+            {usersError && (
+              <p className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {usersError}
+              </p>
+            )}
             <div className="space-y-4">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <div
                   key={user.id}
                   className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 hover:border-purple-500 transition-all"
@@ -363,19 +417,24 @@ export const AdminPage = () => {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center font-bold text-xl">
-                        {user.email[0].toUpperCase()}
+                        {String(user.email || "?")[0]?.toUpperCase() || "?"}
                       </div>
                       <div>
                         <div className="font-semibold text-lg flex items-center gap-2">
-                          {user.email}
+                          {user.email || "Unknown Email"}
                           {user.isAdmin && (
                             <span className="px-2 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-xs font-bold">
                               ADMIN
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-400">
-                          Points: {user.points || 0}
+                        <div className="text-sm text-gray-400 flex flex-wrap gap-x-4 gap-y-1">
+                          <span>Name: {user.displayName || "N/A"}</span>
+                          <span>Points: {user.points || 0}</span>
+                          <span>Status: {user.status || "active"}</span>
+                          <span>Email Verified: {user.emailVerified ? "Yes" : "No"}</span>
+                          <span>Registered: {formatTimestamp(user.createdAt)}</span>
+                          <span>Last Login: {formatTimestamp(user.lastLoginAt)}</span>
                         </div>
                       </div>
                     </div>
@@ -392,8 +451,8 @@ export const AdminPage = () => {
                   </div>
                 </div>
               ))}
-              {users.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No users yet.</p>
+              {filteredUsers.length === 0 && (
+                <p className="text-center text-gray-500 py-8">No users found for current filters.</p>
               )}
             </div>
           </div>
