@@ -356,7 +356,7 @@ const SubmissionActivity = () => {
       <div className="page-container max-w-7xl">
         <div className="mb-8">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Performance</p>
-          <h1 className="mt-2 text-4xl font-bold md:text-5xl">
+          <h1 className="mt-2 text-3xl font-bold sm:text-4xl md:text-5xl">
             Activity Dashboard
           </h1>
           <p className="text-muted mt-2">Submission trends, solved progress, and coding consistency.</p>
@@ -367,41 +367,41 @@ const SubmissionActivity = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase">Total Submissions</p>
-            <p className="text-3xl font-bold">{submissions.length}</p>
+            <p className="text-2xl font-bold sm:text-3xl">{submissions.length}</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase">Accepted</p>
-            <p className="text-3xl font-bold">{acceptedSubmissions.length}</p>
+            <p className="text-2xl font-bold sm:text-3xl">{acceptedSubmissions.length}</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase">Acceptance Rate</p>
-            <p className="text-3xl font-bold">{acceptanceRate}%</p>
+            <p className="text-2xl font-bold sm:text-3xl">{acceptanceRate}%</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase">Current Streak</p>
-            <p className="text-3xl font-bold">{streaks.current}</p>
+            <p className="text-2xl font-bold sm:text-3xl">{streaks.current}</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase">Longest Streak</p>
-            <p className="text-3xl font-bold">{streaks.longest}</p>
+            <p className="text-2xl font-bold sm:text-3xl">{streaks.longest}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-8">
-          <div className="surface-card xl:col-span-8 p-5">
-            <div className="flex items-center justify-between mb-4">
+        <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-12 xl:gap-6">
+          <div className="surface-card p-5 lg:col-span-7 xl:col-span-8">
+            <div className="mb-4 flex flex-col items-start justify-between gap-1 sm:flex-row sm:items-center">
               <h2 className="text-lg font-semibold">Submission Trend (Last 30 Days)</h2>
               <span className="text-muted text-xs">Daily attempts</span>
             </div>
-            <div className="h-80">
+            <div className="h-64 sm:h-72 lg:h-80">
               <canvas ref={canvasRef} />
             </div>
           </div>
 
-          <div className="surface-card xl:col-span-4 p-5">
+          <div className="surface-card p-5 lg:col-span-5 xl:col-span-4">
             <h2 className="text-lg font-semibold mb-4">Solved by Difficulty</h2>
             <div className="space-y-4">
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
@@ -432,9 +432,9 @@ const SubmissionActivity = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          <div className="surface-card xl:col-span-7 p-5">
-            <div className="flex items-center justify-between mb-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 xl:gap-6">
+          <div className="surface-card p-5 lg:col-span-7">
+            <div className="mb-4 flex flex-col items-start justify-between gap-1 sm:flex-row sm:items-center">
               <h2 className="text-lg font-semibold">Consistency Heatmap</h2>
               <span className="text-muted text-xs">Last 12 weeks</span>
             </div>
@@ -447,7 +447,7 @@ const SubmissionActivity = () => {
                       <div
                         key={entry.date.toISOString()}
                         title={`${entry.date.toDateString()} • ${entry.count} submissions`}
-                        className={`h-4 w-4 rounded-sm border border-[color:var(--border)] ${cellClassForCount(entry.count)}`}
+                        className={`h-3 w-3 rounded-sm border border-[color:var(--border)] sm:h-4 sm:w-4 ${cellClassForCount(entry.count)}`}
                       />
                     ))}
                   </div>
@@ -455,7 +455,7 @@ const SubmissionActivity = () => {
               </div>
             </div>
 
-            <div className="text-muted mt-3 flex items-center gap-3 text-xs">
+            <div className="text-muted mt-3 flex flex-wrap items-center gap-3 text-xs">
               <span>Less</span>
               <div className="h-3 w-3 rounded-sm border border-[color:var(--border)] bg-slate-800" />
               <div className="h-3 w-3 rounded-sm border border-[color:var(--border)] bg-emerald-900" />
@@ -466,8 +466,8 @@ const SubmissionActivity = () => {
             </div>
           </div>
 
-          <div className="surface-card xl:col-span-5 p-5">
-            <div className="flex items-center justify-between mb-4">
+          <div className="surface-card p-5 lg:col-span-5">
+            <div className="mb-4 flex flex-col items-start justify-between gap-1 sm:flex-row sm:items-center">
               <h2 className="text-lg font-semibold">Recent Accepted</h2>
               <span className="text-muted text-xs">Latest 8</span>
             </div>
@@ -478,7 +478,7 @@ const SubmissionActivity = () => {
               <div className="space-y-2">
                 {recentAccepted.map((submission) => (
                   <div key={submission.id} className="surface-soft p-3">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
                       <p className="font-semibold text-sm line-clamp-1">{submission.problemName}</p>
                       <span
                         className={`rounded px-2 py-1 text-xs ${

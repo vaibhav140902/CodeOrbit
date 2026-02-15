@@ -826,7 +826,7 @@ export const ProblemWorkspace = () => {
   }
 
   return (
-    <div className="app-shell pb-8">
+    <div className="app-shell pb-28 md:pb-8">
       <div className="mx-auto w-full max-w-[1800px] px-4 pt-6 md:px-6">
         <div className="surface-card mb-5 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -855,11 +855,11 @@ export const ProblemWorkspace = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
               <button onClick={() => setFocusMode((state) => !state)} className="btn-secondary text-sm">
                 {focusMode ? "Exit Focus Mode" : "Focus Mode"}
               </button>
-              <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)] px-4 py-2 text-sm">
+              <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)] px-4 py-2 text-sm sm:text-center">
                 Autosave: {saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : "Idle"}
               </div>
             </div>
@@ -899,7 +899,7 @@ export const ProblemWorkspace = () => {
                   <div className="space-y-2">
                     {recentSubmissions.map((submission) => (
                       <div key={submission.id} className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)] p-3">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span
                             className={`rounded px-2 py-1 text-xs font-semibold ${
                               submission.status === "Accepted"
@@ -928,12 +928,12 @@ export const ProblemWorkspace = () => {
 
           <section className={`space-y-4 ${focusMode ? "col-span-1" : "xl:col-span-8"}`}>
             <div className="surface-card p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
+              <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <select
                     value={activeLanguageId}
                     onChange={(event) => setActiveLanguageId(event.target.value)}
-                    className="field-select text-sm"
+                    className="field-select w-full text-sm sm:w-auto"
                   >
                     {availableLanguages.map((language) => (
                       <option key={language.id} value={language.id}>
@@ -944,13 +944,13 @@ export const ProblemWorkspace = () => {
 
                   <button
                     onClick={handleResetCurrentLanguage}
-                    className="btn-ghost text-xs"
+                    className="btn-ghost text-xs sm:w-auto"
                   >
                     Reset Template
                   </button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="hidden gap-2 md:flex md:flex-wrap md:items-center">
                   <button
                     onClick={handleRun}
                     disabled={running || submitting}
@@ -971,14 +971,14 @@ export const ProblemWorkspace = () => {
               <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#0b1020]">
                 <div className="flex items-center justify-between border-b border-slate-700 bg-slate-900/90 px-4 py-2 text-xs text-slate-400">
                   <span>{currentLanguage.label} Editor</span>
-                  <span>
+                  <span className="hidden sm:inline">
                     {totalLines} lines · {code.length} chars
                   </span>
                 </div>
-                <div className="relative grid h-[420px] grid-cols-[56px_minmax(0,1fr)]">
+                <div className="relative grid h-[320px] grid-cols-[46px_minmax(0,1fr)] sm:h-[420px] sm:grid-cols-[56px_minmax(0,1fr)]">
                   <div
                     ref={lineNumbersRef}
-                    className="overflow-hidden border-r border-slate-700 bg-[#0d1326] px-2 py-3 text-right font-mono text-xs leading-6 text-slate-500"
+                    className="overflow-hidden border-r border-slate-700 bg-[#0d1326] px-1 py-3 text-right font-mono text-[10px] leading-6 text-slate-500 sm:px-2 sm:text-xs"
                   >
                     {lineNumbers.map((line) => (
                       <div key={line}>{line}</div>
@@ -998,7 +998,7 @@ export const ProblemWorkspace = () => {
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="surface-card p-4">
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
                   <h3 className="font-semibold">Input Lab</h3>
                   <button
                     onClick={() => {
@@ -1030,7 +1030,7 @@ export const ProblemWorkspace = () => {
               </div>
 
               <div className="surface-card p-4">
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
                   <h3 className="font-semibold">Execution Console</h3>
                   <span
                     className={`rounded px-2 py-1 text-xs font-semibold ${
@@ -1082,6 +1082,33 @@ export const ProblemWorkspace = () => {
         </div>
       </div>
 
+      {!submissionSummary && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--border)] bg-[color:var(--bg-surface)]/98 px-3 py-2 backdrop-blur md:hidden">
+          <div className="mx-auto w-full max-w-[1180px]" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px))" }}>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold text-soft">{judgeStatus}</p>
+              <p className="text-xs text-muted">Runtime: {runtimeLabel}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handleRun}
+                disabled={running || submitting}
+                className="btn-secondary w-full text-sm disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {running ? "Running..." : "Run"}
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={running || submitting}
+                className="btn-primary w-full text-sm disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitting ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {submissionSummary && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
           <div className="surface-card w-full max-w-xl p-6 md:p-7">
@@ -1116,8 +1143,8 @@ export const ProblemWorkspace = () => {
 
             <p className="text-muted mt-4 text-xs">{submissionSummary.submittedAt}</p>
 
-            <div className="mt-6 flex flex-wrap justify-end gap-2">
-              <button onClick={() => setSubmissionSummary(null)} className="btn-secondary text-sm">
+            <div className="mt-6 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+              <button onClick={() => setSubmissionSummary(null)} className="btn-secondary w-full text-sm sm:w-auto">
                 Close
               </button>
               <button
@@ -1125,7 +1152,7 @@ export const ProblemWorkspace = () => {
                   setSubmissionSummary(null);
                   navigate("/activity");
                 }}
-                className="btn-secondary text-sm"
+                className="btn-secondary w-full text-sm sm:w-auto"
               >
                 Open activity
               </button>
@@ -1134,7 +1161,7 @@ export const ProblemWorkspace = () => {
                   setSubmissionSummary(null);
                   navigate("/problems");
                 }}
-                className="btn-primary text-sm"
+                className="btn-primary w-full text-sm sm:w-auto"
               >
                 Next problem
               </button>

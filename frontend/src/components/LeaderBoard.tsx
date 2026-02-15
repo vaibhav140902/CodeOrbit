@@ -121,8 +121,8 @@ export const Leaderboard = () => {
       <div className="page-container">
         <div className="mb-8">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Competition</p>
-          <h1 className="mt-2 text-5xl font-bold">Leaderboard</h1>
-          <p className="text-muted mt-2 text-lg">Track rank, solved problems, and acceptance efficiency.</p>
+          <h1 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">Leaderboard</h1>
+          <p className="text-muted mt-2 text-base sm:text-lg">Track rank, solved problems, and acceptance efficiency.</p>
           {errorMessage && (
             <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">
               {errorMessage}
@@ -130,29 +130,29 @@ export const Leaderboard = () => {
           )}
         </div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase tracking-wide">Total Competitors</p>
-            <p className="text-3xl font-bold mt-1">{rows.length}</p>
+            <p className="mt-1 text-2xl font-bold sm:text-3xl">{rows.length}</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase tracking-wide">Total Score</p>
-            <p className="text-3xl font-bold mt-1">{totalScore}</p>
+            <p className="mt-1 text-2xl font-bold sm:text-3xl">{totalScore}</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase tracking-wide">Average Score</p>
-            <p className="text-3xl font-bold mt-1">{averageScore}</p>
+            <p className="mt-1 text-2xl font-bold sm:text-3xl">{averageScore}</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase tracking-wide">Your Percentile</p>
-            <p className="text-3xl font-bold mt-1">{currentUserRow ? `${percentile}%` : "--"}</p>
+            <p className="mt-1 text-2xl font-bold sm:text-3xl">{currentUserRow ? `${percentile}%` : "--"}</p>
           </div>
         </div>
 
         {currentUserRow && (
           <div className="surface-card mb-8 p-5">
             <h2 className="text-lg font-semibold mb-3">Your Standing</h2>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm">
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-5">
               <div className="surface-soft p-3">
                 <p className="text-muted">Rank</p>
                 <p className="text-2xl font-bold">#{currentUserRow.rank}</p>
@@ -187,13 +187,13 @@ export const Leaderboard = () => {
             rows.map((row) => (
               <div
                 key={row.uid}
-                className={`rounded-xl border px-5 py-4 transition-all ${badgeClassByRank(row.rank)} ${
+                className={`rounded-xl border px-4 py-4 transition-all sm:px-5 ${badgeClassByRank(row.rank)} ${
                   user?.uid === row.uid ? "ring-2 ring-[color:var(--ring)]" : ""
                 }`}
               >
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <div className="md:col-span-1 text-lg font-bold">#{row.rank}</div>
-                  <div className="md:col-span-4 flex items-center gap-3">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-center">
+                  <div className="text-lg font-bold lg:col-span-1">#{row.rank}</div>
+                  <div className="flex items-center gap-3 lg:col-span-4">
                     <img
                       src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${row.avatarSeed}`}
                       alt={row.displayName}
@@ -204,21 +204,21 @@ export const Leaderboard = () => {
                       <p className="text-muted text-xs">{row.email || row.uid}</p>
                     </div>
                   </div>
-                  <div className="md:col-span-2 text-sm">
+                  <div className="text-sm lg:col-span-2">
                     <p className="text-muted">Solved</p>
                     <p className="font-semibold">
                       {row.solvedCount} <span className="text-muted text-xs">(E{row.easySolved}/M{row.mediumSolved}/H{row.hardSolved})</span>
                     </p>
                   </div>
-                  <div className="md:col-span-2 text-sm">
+                  <div className="text-sm lg:col-span-2">
                     <p className="text-muted">Acceptance</p>
                     <p className="font-semibold">{row.acceptanceRate.toFixed(1)}%</p>
                   </div>
-                  <div className="md:col-span-1 text-sm">
+                  <div className="text-sm lg:col-span-1">
                     <p className="text-muted">Accepted</p>
                     <p className="font-semibold">{row.totalAccepted}</p>
                   </div>
-                  <div className="md:col-span-2 text-right">
+                  <div className="text-left lg:col-span-2 lg:text-right">
                     <p className="text-muted text-xs uppercase tracking-wide">Score</p>
                     <p className="text-2xl font-bold text-[color:var(--accent)]">{row.score}</p>
                   </div>

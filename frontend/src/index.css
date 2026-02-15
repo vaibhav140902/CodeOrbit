@@ -64,6 +64,7 @@ body {
   font-family: var(--font-sans);
   background: var(--bg-canvas);
   color: var(--text-main);
+  overflow-x: hidden;
   transition: background-color 220ms ease, color 220ms ease;
 }
 
@@ -83,6 +84,13 @@ body::before {
 ::selection {
   background: var(--accent-soft);
   color: var(--text-main);
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
 }
 
 @layer components {
@@ -256,4 +264,28 @@ html[data-theme="light"] .text-gray-400,
 html[data-theme="light"] .text-slate-500,
 html[data-theme="light"] .text-slate-400 {
   color: var(--text-muted) !important;
+}
+
+@media (max-width: 380px) {
+  .page-container {
+    padding: 1rem 0.75rem 1.75rem;
+  }
+
+  .surface-card {
+    border-radius: 0.85rem;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-ghost {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .field-input,
+  .field-select,
+  .field-textarea {
+    padding: 0.62rem 0.72rem;
+  }
 }
