@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../utils/firebase';
+import { httpsCallable } from "firebase/functions";
+import { auth, db, functions } from '../../utils/firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme';
+import { BRAND } from "../../config/brand";
 
 export const Signup = () => {
   const [email, setEmail] = useState('');
@@ -12,6 +14,7 @@ export const Signup = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const claimDailyFreePass = httpsCallable<Record<string, never>, { granted: boolean }>(functions, "claimDailyFreePass");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +48,12 @@ export const Signup = () => {
         { merge: true }
       );
 
+      try {
+        await claimDailyFreePass({});
+      } catch (claimError) {
+        console.warn("Daily free pass claim failed:", claimError);
+      }
+
       alert('✅ Account created! You can now sign in.');
       navigate('/login');
     } catch (error: any) {
@@ -67,19 +76,20 @@ export const Signup = () => {
   };
 
   return (
-    <div className="app-shell flex items-center justify-center px-6 py-10">
+    <div className="app-shell flex items-center justify-center px-3 py-6 sm:px-6 sm:py-10">
       <div className="w-full max-w-md">
         <div className="mb-5 flex items-center justify-between">
-          <Link to="/" className="brand-gradient text-2xl font-bold">
-            Vaibhav&apos;s Code
+          <Link to="/" className="inline-flex items-center gap-2 brand-gradient text-xl font-bold sm:text-2xl">
+            <img src={BRAND.markPath} alt={`${BRAND.name} logo`} className="h-6 w-6 rounded-md" />
+            {BRAND.name}
           </Link>
           <button onClick={toggleTheme} className="btn-ghost text-xs">
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
         </div>
 
-        <div className="surface-card p-8">
-          <h1 className="text-3xl font-bold">Create account</h1>
+        <div className="surface-card p-5 sm:p-8">
+          <h1 className="text-2xl font-bold sm:text-3xl">Create account</h1>
           <p className="text-muted mt-2 mb-8">Start building your problem-solving profile.</p>
 
           <form onSubmit={handleSignup} className="space-y-5">

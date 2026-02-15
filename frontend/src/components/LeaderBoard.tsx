@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { useAuth } from "../hooks/useAuth";
+import { InlineError } from "./system/InlineError";
+import { SkeletonCard } from "./system/SkeletonCard";
 
 interface LeaderboardRow {
   uid: string;
@@ -40,57 +42,58 @@ export const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        setErrorMessage(null);
-        const snapshot = await getDocs(collection(db, "leaderboard"));
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      setErrorMessage(null);
+      const snapshot = await getDocs(collection(db, "leaderboard"));
 
-        const mapped = snapshot.docs.map((entry) => {
-          const data = entry.data();
-          return {
-            uid: String(data.uid ?? entry.id),
-            displayName: String(data.displayName ?? "User"),
-            email: String(data.email ?? ""),
-            avatarSeed: String(data.avatarSeed ?? entry.id),
-            score: safeNumber(data.score),
-            solvedCount: safeNumber(data.solvedCount),
-            easySolved: safeNumber(data.easySolved),
-            mediumSolved: safeNumber(data.mediumSolved),
-            hardSolved: safeNumber(data.hardSolved),
-            totalSubmissions: safeNumber(data.totalSubmissions),
-            totalAccepted: safeNumber(data.totalAccepted),
-            acceptanceRate: safeNumber(data.acceptanceRate),
-          } as LeaderboardRow;
-        });
+      const mapped = snapshot.docs.map((entry) => {
+        const data = entry.data();
+        return {
+          uid: String(data.uid ?? entry.id),
+          displayName: String(data.displayName ?? "User"),
+          email: String(data.email ?? ""),
+          avatarSeed: String(data.avatarSeed ?? entry.id),
+          score: safeNumber(data.score),
+          solvedCount: safeNumber(data.solvedCount),
+          easySolved: safeNumber(data.easySolved),
+          mediumSolved: safeNumber(data.mediumSolved),
+          hardSolved: safeNumber(data.hardSolved),
+          totalSubmissions: safeNumber(data.totalSubmissions),
+          totalAccepted: safeNumber(data.totalAccepted),
+          acceptanceRate: safeNumber(data.acceptanceRate),
+        } as LeaderboardRow;
+      });
 
-        mapped.sort((a, b) => {
-          if (b.score !== a.score) return b.score - a.score;
-          if (b.solvedCount !== a.solvedCount) return b.solvedCount - a.solvedCount;
-          if (b.acceptanceRate !== a.acceptanceRate) return b.acceptanceRate - a.acceptanceRate;
-          if (b.totalAccepted !== a.totalAccepted) return b.totalAccepted - a.totalAccepted;
-          return a.displayName.localeCompare(b.displayName);
-        });
+      mapped.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (b.solvedCount !== a.solvedCount) return b.solvedCount - a.solvedCount;
+        if (b.acceptanceRate !== a.acceptanceRate) return b.acceptanceRate - a.acceptanceRate;
+        if (b.totalAccepted !== a.totalAccepted) return b.totalAccepted - a.totalAccepted;
+        return a.displayName.localeCompare(b.displayName);
+      });
 
-        const ranked = mapped.map((entry, index) => ({ ...entry, rank: index + 1 }));
-        setRows(ranked);
-      } catch (error: unknown) {
-        const errorCode = (error as { code?: string }).code;
-        if (errorCode === "permission-denied") {
-          setErrorMessage(
-            "Permission denied while loading leaderboard. Deploy updated Firestore rules and sign in again."
-          );
-        } else {
-          console.error("Error loading leaderboard:", error);
-          setErrorMessage("Could not load leaderboard right now.");
-        }
-      } finally {
-        setLoading(false);
+      const ranked = mapped.map((entry, index) => ({ ...entry, rank: index + 1 }));
+      setRows(ranked);
+    } catch (error: unknown) {
+      const errorCode = (error as { code?: string }).code;
+      if (errorCode === "permission-denied") {
+        setErrorMessage(
+          "Permission denied while loading leaderboard. Deploy updated Firestore rules and sign in again."
+        );
+      } else {
+        console.error("Error loading leaderboard:", error);
+        setErrorMessage("Could not load leaderboard right now.");
       }
-    };
-
-    fetchLeaderboard();
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
 
   const currentUserRow = useMemo(() => {
     if (!user) return null;
@@ -107,10 +110,11 @@ export const Leaderboard = () => {
 
   if (loading) {
     return (
-      <div className="app-shell flex items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-b-4 border-[color:var(--accent)]" />
-          <p className="text-muted">Loading leaderboard...</p>
+      <div className="app-shell">
+        <div className="page-container space-y-4">
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={4} />
         </div>
       </div>
     );
@@ -123,11 +127,7 @@ export const Leaderboard = () => {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Competition</p>
           <h1 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">Leaderboard</h1>
           <p className="text-muted mt-2 text-base sm:text-lg">Track rank, solved problems, and acceptance efficiency.</p>
-          {errorMessage && (
-            <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">
-              {errorMessage}
-            </p>
-          )}
+          {errorMessage && <InlineError message={errorMessage} onRetry={fetchLeaderboard} className="mt-4" />}
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

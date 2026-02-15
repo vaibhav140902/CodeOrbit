@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useRecoilValue } from "recoil";
 import { userAtom } from "../store/atoms/user";
+import { BRAND } from "../config/brand";
 
 const featureCards = [
   {
@@ -27,44 +28,50 @@ export const Landing = () => {
   return (
     <div className="app-shell">
       <div className="page-container">
-        <section className="surface-card mb-8 overflow-hidden p-8 md:p-10">
+        <section className="surface-card mb-6 overflow-hidden p-5 sm:p-6 md:mb-8 md:p-10">
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr] md:items-center">
             <div>
               <p className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
-                Coding Workspace
+                {BRAND.tagline}
               </p>
-              <h1 className="text-4xl font-bold leading-tight md:text-5xl">
-                Welcome back, <span className="brand-gradient">{username}</span>
+              <h1 className="text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
+                Build interview confidence with <span className="brand-gradient">{BRAND.name}</span>
               </h1>
-              <p className="text-muted mt-4 max-w-xl text-lg">
-                Minimal interface, serious practice. Solve interview-style problems and improve with clear feedback.
+              <p className="text-muted mt-4 max-w-xl text-base sm:text-lg">
+                Welcome {username}. Follow curated problem tracks by topic and company, then ship stronger solutions.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link to="/problems" className="btn-primary">
+              <div className="mt-6 grid grid-cols-1 gap-2 sm:mt-8 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+                <Link to="/problems" className="btn-primary text-center">
                   Start solving
                 </Link>
-                <Link to="/leaderboard" className="btn-secondary">
+                <Link to="/prep" className="btn-secondary text-center">
+                  Explore prep tracks
+                </Link>
+                <Link to="/leaderboard" className="btn-secondary text-center">
                   View leaderboard
+                </Link>
+                <Link to="/pricing" className="btn-ghost text-center">
+                  View pricing
                 </Link>
               </div>
             </div>
 
-            <div className="surface-soft p-6">
+            <div className="surface-soft p-4 sm:p-6">
               <p className="font-mono text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
                 Snapshot
               </p>
-              <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 <div className="rounded-xl border border-[color:var(--border)] p-3">
                   <p className="text-muted text-xs">Problems</p>
-                  <p className="mt-1 text-2xl font-bold">15+</p>
+                  <p className="mt-1 text-xl font-bold sm:text-2xl">15+</p>
                 </div>
                 <div className="rounded-xl border border-[color:var(--border)] p-3">
                   <p className="text-muted text-xs">Languages</p>
-                  <p className="mt-1 text-2xl font-bold">10+</p>
+                  <p className="mt-1 text-xl font-bold sm:text-2xl">10+</p>
                 </div>
-                <div className="rounded-xl border border-[color:var(--border)] p-3">
+                <div className="rounded-xl border border-[color:var(--border)] p-3 col-span-2 sm:col-span-1">
                   <p className="text-muted text-xs">Metrics</p>
-                  <p className="mt-1 text-2xl font-bold">Live</p>
+                  <p className="mt-1 text-xl font-bold sm:text-2xl">Live</p>
                 </div>
               </div>
               <p className="text-muted mt-4 text-sm">
@@ -74,11 +81,11 @@ export const Landing = () => {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-3 sm:gap-4 md:grid-cols-3">
           {featureCards.map((feature) => (
-            <article key={feature.title} className="surface-card p-6">
+            <article key={feature.title} className="surface-card p-5 sm:p-6">
               <p className="font-mono text-xs uppercase tracking-[0.16em] text-[color:var(--accent)]">{feature.tag}</p>
-              <h2 className="mt-3 text-xl font-semibold">{feature.title}</h2>
+              <h2 className="mt-3 text-lg font-semibold sm:text-xl">{feature.title}</h2>
               <p className="text-muted mt-2 text-sm leading-6">{feature.description}</p>
             </article>
           ))}

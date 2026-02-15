@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { useNavigate } from "react-router-dom";
+import { InlineError } from "./system/InlineError";
+import { SkeletonCard } from "./system/SkeletonCard";
 
 type Difficulty = "Easy" | "Medium" | "Hard";
 type DifficultyFilter = Difficulty | "All";
@@ -30,17 +32,14 @@ export const ProblemList = () => {
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("All");
   const [topicFilter, setTopicFilter] = useState("All");
 
-  useEffect(() => {
-    fetchProblems();
-  }, []);
-
   const normalizeDifficulty = (value: unknown): Difficulty => {
     if (value === "Medium" || value === "Hard") return value;
     return "Easy";
   };
 
-  const fetchProblems = async () => {
+  const fetchProblems = useCallback(async () => {
     try {
+      setLoading(true);
       setErrorMessage(null);
       const querySnapshot = await getDocs(collection(db, "problems"));
       const problemsData = querySnapshot.docs.map((problemDoc) => {
@@ -72,7 +71,11 @@ export const ProblemList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProblems();
+  }, [fetchProblems]);
 
   const availableTopics = useMemo(() => {
     const tagSet = new Set<string>();
@@ -117,10 +120,17 @@ export const ProblemList = () => {
 
   if (loading) {
     return (
-      <div className="app-shell flex items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-14 w-14 animate-spin rounded-full border-b-4 border-[color:var(--accent)]" />
-          <p className="text-muted">Loading problems...</p>
+      <div className="app-shell">
+        <div className="page-container">
+          <div className="mb-6">
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Problem bank</p>
+            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Problems</h1>
+          </div>
+          <div className="space-y-4">
+            <SkeletonCard lines={5} />
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={4} />
+          </div>
         </div>
       </div>
     );
@@ -129,39 +139,37 @@ export const ProblemList = () => {
   return (
     <div className="app-shell">
       <div className="page-container">
-        <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <section className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-6 sm:gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Problem bank</p>
-            <h1 className="mt-2 text-4xl font-bold">Problems</h1>
-            <p className="text-muted mt-2">Solve {problems.length} coding challenges across core interview topics.</p>
+            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Problems</h1>
+            <p className="text-muted mt-2 text-sm sm:text-base">
+              Solve {problems.length} coding challenges across core interview topics.
+            </p>
           </div>
-          <button onClick={fetchProblems} className="btn-secondary">
+          <button onClick={fetchProblems} className="btn-secondary text-sm">
             Refresh
           </button>
         </section>
 
-        {errorMessage && (
-          <p className="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">
-            {errorMessage}
-          </p>
-        )}
+        {errorMessage && <InlineError message={errorMessage} onRetry={fetchProblems} className="mb-6" />}
 
-        <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <section className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase">Easy</p>
-            <p className="mt-1 text-3xl font-bold">{totalByDifficulty.Easy}</p>
+            <p className="mt-1 text-2xl font-bold sm:text-3xl">{totalByDifficulty.Easy}</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase">Medium</p>
-            <p className="mt-1 text-3xl font-bold">{totalByDifficulty.Medium}</p>
+            <p className="mt-1 text-2xl font-bold sm:text-3xl">{totalByDifficulty.Medium}</p>
           </div>
           <div className="surface-card p-4">
             <p className="text-muted text-xs uppercase">Hard</p>
-            <p className="mt-1 text-3xl font-bold">{totalByDifficulty.Hard}</p>
+            <p className="mt-1 text-2xl font-bold sm:text-3xl">{totalByDifficulty.Hard}</p>
           </div>
         </section>
 
-        <section className="surface-card mb-6 p-5">
+        <section className="surface-card mb-6 p-4 sm:p-5">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
             <input
               value={search}
@@ -193,11 +201,11 @@ export const ProblemList = () => {
           </div>
         </section>
 
-        <section className="space-y-6">
+        <section className="space-y-4 sm:space-y-6">
           {DIFFICULTY_ORDER.map((difficulty) => (
             <article key={difficulty} className="surface-card overflow-hidden">
-              <header className="flex items-center justify-between border-b border-[color:var(--border)] px-5 py-4">
-                <h2 className="text-xl font-semibold">{difficulty}</h2>
+              <header className="flex items-center justify-between border-b border-[color:var(--border)] px-4 py-3 sm:px-5 sm:py-4">
+                <h2 className="text-lg font-semibold sm:text-xl">{difficulty}</h2>
                 <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${difficultyBadgeClass[difficulty]}`}>
                   {problemsByDifficulty[difficulty].length}
                 </span>
@@ -211,21 +219,21 @@ export const ProblemList = () => {
                     <button
                       key={problem.id}
                       onClick={() => navigate(`/problems/${problem.id}`)}
-                      className="w-full px-5 py-4 text-left transition hover:bg-[color:var(--accent-soft)]"
+                      className="w-full px-4 py-3 text-left transition hover:bg-[color:var(--accent-soft)] sm:px-5 sm:py-4"
                     >
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-center">
-                        <div className="font-mono text-sm text-muted md:col-span-1">{index + 1}.</div>
-                        <div className="font-semibold md:col-span-4">{problem.problemName}</div>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-12 md:items-center md:gap-3">
+                        <div className="font-mono text-xs text-muted md:col-span-1 md:text-sm">{index + 1}.</div>
+                        <div className="font-semibold leading-snug md:col-span-4">{problem.problemName}</div>
                         <div className="md:col-span-2">
                           <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${difficultyBadgeClass[difficulty]}`}>
                             {difficulty}
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-2 md:col-span-5">
+                        <div className="flex flex-wrap gap-1.5 md:col-span-5 md:gap-2">
                           {problem.tags.map((tag) => (
                             <span
                               key={`${problem.id}-${tag}`}
-                              className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-xs text-sky-600"
+                              className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-600 sm:text-xs"
                             >
                               {tag}
                             </span>

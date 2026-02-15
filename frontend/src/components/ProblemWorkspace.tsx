@@ -212,6 +212,8 @@ export const ProblemWorkspace = () => {
   const [runError, setRunError] = useState<string | null>(null);
 
   const [focusMode, setFocusMode] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<"problem" | "code">("code");
+  const [editorFocused, setEditorFocused] = useState(false);
   const [recentSubmissions, setRecentSubmissions] = useState<SubmissionRow[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [submissionSummary, setSubmissionSummary] = useState<SubmissionSummary | null>(null);
@@ -412,6 +414,10 @@ export const ProblemWorkspace = () => {
   useEffect(() => {
     fetchRecentSubmissions();
   }, [fetchRecentSubmissions]);
+
+  useEffect(() => {
+    setMobilePanel("code");
+  }, [problemId]);
 
   useEffect(() => {
     if (!user?.uid || !problemId) return;
@@ -827,17 +833,17 @@ export const ProblemWorkspace = () => {
 
   return (
     <div className="app-shell pb-28 md:pb-8">
-      <div className="mx-auto w-full max-w-[1800px] px-4 pt-6 md:px-6">
-        <div className="surface-card mb-5 p-5">
+      <div className="mx-auto w-full max-w-[1800px] px-3 pt-4 sm:px-4 sm:pt-6 md:px-6">
+        <div className="surface-card mb-4 p-4 sm:mb-5 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <Link to="/problems" className="text-sm text-[color:var(--accent)] hover:underline">
                 ← Back to problem list
               </Link>
-              <h1 className="mt-2 text-2xl font-bold md:text-3xl">{problem.problemName}</h1>
+              <h1 className="mt-2 text-xl font-bold sm:text-2xl md:text-3xl">{problem.problemName}</h1>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:px-3 sm:text-xs ${
                     problem.difficulty === "Easy"
                       ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
                       : problem.difficulty === "Medium"
@@ -848,7 +854,7 @@ export const ProblemWorkspace = () => {
                   {problem.difficulty}
                 </span>
                 {problem.tags.map((tag) => (
-                  <span key={tag} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200">
+                  <span key={tag} className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-200 sm:px-3 sm:text-xs">
                     {tag}
                   </span>
                 ))}
@@ -869,27 +875,54 @@ export const ProblemWorkspace = () => {
 
         <div className={`grid gap-4 ${focusMode ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-12"}`}>
           {!focusMode && (
-            <aside className="space-y-4 xl:col-span-4">
-              <section className="surface-card p-5">
+            <div className="surface-card p-2 xl:hidden">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setMobilePanel("problem")}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                    mobilePanel === "problem"
+                      ? "bg-[color:var(--accent-soft)] text-[color:var(--text-main)]"
+                      : "text-muted"
+                  }`}
+                >
+                  Problem
+                </button>
+                <button
+                  onClick={() => setMobilePanel("code")}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                    mobilePanel === "code"
+                      ? "bg-[color:var(--accent-soft)] text-[color:var(--text-main)]"
+                      : "text-muted"
+                  }`}
+                >
+                  Code
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!focusMode && (
+            <aside className={`space-y-3 sm:space-y-4 xl:col-span-4 ${mobilePanel === "code" ? "hidden xl:block" : ""}`}>
+              <section className="surface-card p-4 sm:p-5">
                 <h2 className="mb-3 text-lg font-semibold">Problem Statement</h2>
                 <p className="whitespace-pre-line text-sm leading-6 text-soft">{problem.description}</p>
               </section>
 
-              <section className="surface-card p-5">
+              <section className="surface-card p-4 sm:p-5">
                 <h3 className="mb-2 font-semibold text-[color:var(--accent)]">Examples</h3>
                 <pre className="overflow-auto whitespace-pre-wrap rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)] p-3 text-xs leading-6 text-soft">
                   {problem.examples}
                 </pre>
               </section>
 
-              <section className="surface-card p-5">
+              <section className="surface-card p-4 sm:p-5">
                 <h3 className="mb-2 font-semibold text-[color:var(--accent)]">Constraints</h3>
                 <pre className="overflow-auto whitespace-pre-wrap rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)] p-3 text-xs leading-6 text-soft">
                   {problem.constraints}
                 </pre>
               </section>
 
-              <section className="surface-card p-5">
+              <section className="surface-card p-4 sm:p-5">
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-muted">Recent Submissions</h3>
                 {submissionsLoading ? (
                   <p className="text-sm text-muted">Loading submissions...</p>
@@ -926,7 +959,11 @@ export const ProblemWorkspace = () => {
             </aside>
           )}
 
-          <section className={`space-y-4 ${focusMode ? "col-span-1" : "xl:col-span-8"}`}>
+          <section
+            className={`space-y-4 ${focusMode ? "col-span-1" : "xl:col-span-8"} ${
+              !focusMode && mobilePanel === "problem" ? "hidden xl:block" : ""
+            }`}
+          >
             <div className="surface-card p-4">
               <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -989,6 +1026,8 @@ export const ProblemWorkspace = () => {
                     value={code}
                     onChange={(event) => setCode(event.target.value)}
                     onScroll={handleEditorScroll}
+                    onFocus={() => setEditorFocused(true)}
+                    onBlur={() => setEditorFocused(false)}
                     spellCheck={false}
                     className="h-full w-full resize-none bg-[#0b1020] p-3 font-mono text-sm leading-6 text-slate-100 outline-none"
                   />
@@ -996,7 +1035,7 @@ export const ProblemWorkspace = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
               <div className="surface-card p-4">
                 <div className="mb-2 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
                   <h3 className="font-semibold">Input Lab</h3>
@@ -1082,7 +1121,7 @@ export const ProblemWorkspace = () => {
         </div>
       </div>
 
-      {!submissionSummary && (
+      {!submissionSummary && mobilePanel === "code" && !editorFocused && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--border)] bg-[color:var(--bg-surface)]/98 px-3 py-2 backdrop-blur md:hidden">
           <div className="mx-auto w-full max-w-[1180px]" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px))" }}>
             <div className="mb-2 flex items-center justify-between">

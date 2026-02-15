@@ -64,7 +64,12 @@ node_modules/
 
 # dotenv environment variables file
 .env
+backend/functions/.env
+backend/functions/.env.*
+frontend/src/admin-scripts/ServiceAccountkey.json
+**/serviceAccount*.json
+**/service-account*.json
+!frontend/src/admin-scripts/serviceAccountKey.example.json
 
 # dataconnect generated files
 .dataconnect
-frontend/src/admin-scripts/ServiceAccountkey.json

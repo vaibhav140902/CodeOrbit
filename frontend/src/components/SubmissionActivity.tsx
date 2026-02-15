@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chart, registerables, ChartConfiguration } from "chart.js";
 import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { useAuth } from "../hooks/useAuth";
+import { InlineError } from "./system/InlineError";
+import { SkeletonCard } from "./system/SkeletonCard";
 
 Chart.register(...registerables);
 
@@ -110,80 +112,86 @@ const SubmissionActivity = () => {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchActivity = async () => {
-      if (!user?.uid) {
-        setSubmissions([]);
-        setLoading(false);
-        return;
-      }
+  const fetchActivity = useCallback(async () => {
+    if (!user?.uid) {
+      setSubmissions([]);
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setErrorMessage(null);
+    try {
+      setLoading(true);
+      setErrorMessage(null);
 
-        const [problemsSnapshot, submissionsSnapshot] = await Promise.all([
-          getDocs(query(collection(db, "problems"), limit(500))),
-          getDocs(query(collection(db, "submissions"), where("userId", "==", user.uid), limit(1000))),
-        ]);
+      const [problemsSnapshot, submissionsSnapshot] = await Promise.all([
+        getDocs(query(collection(db, "problems"), limit(500))),
+        getDocs(query(collection(db, "submissions"), where("userId", "==", user.uid), limit(1000))),
+      ]);
 
-        const problemsById = new Map<string, ProblemRecord>();
-        problemsSnapshot.forEach((problemDoc) => {
-          const data = problemDoc.data();
-          const difficulty = normalizeDifficulty(
-            data.difficulty ?? data.Difficulty ?? data["Difficulty "]
-          );
-          problemsById.set(problemDoc.id, {
-            id: problemDoc.id,
-            difficulty,
-          });
+      const problemsById = new Map<string, ProblemRecord>();
+      problemsSnapshot.forEach((problemDoc) => {
+        const data = problemDoc.data();
+        const difficulty = normalizeDifficulty(
+          data.difficulty ?? data.Difficulty ?? data["Difficulty "]
+        );
+        problemsById.set(problemDoc.id, {
+          id: problemDoc.id,
+          difficulty,
         });
+      });
 
-        const mappedSubmissions: SubmissionRecord[] = submissionsSnapshot.docs
-          .map((submissionDoc) => {
-            const data = submissionDoc.data() as Record<string, unknown>;
-            const timestampCandidate = (data.submitTime ?? data.timestamp) as {
-              toDate?: () => Date;
-            };
+      const mappedSubmissions: SubmissionRecord[] = submissionsSnapshot.docs
+        .map((submissionDoc) => {
+          const data = submissionDoc.data() as Record<string, unknown>;
+          const timestampCandidate = (data.submitTime ?? data.timestamp) as {
+            toDate?: () => Date;
+          };
 
-            if (!timestampCandidate || typeof timestampCandidate.toDate !== "function") {
-              return null;
-            }
+          if (!timestampCandidate || typeof timestampCandidate.toDate !== "function") {
+            return null;
+          }
 
-            const problemId = String(data.problemId ?? "");
-            const fallbackDifficulty = problemsById.get(problemId)?.difficulty ?? "Easy";
-            const difficulty = normalizeDifficulty(data.problemDifficulty ?? fallbackDifficulty);
+          const problemId = String(data.problemId ?? "");
+          const fallbackDifficulty = problemsById.get(problemId)?.difficulty ?? "Easy";
+          const difficulty = normalizeDifficulty(data.problemDifficulty ?? fallbackDifficulty);
 
-            return {
-              id: submissionDoc.id,
-              problemId,
-              problemName: String(data.problemName ?? "Untitled Problem"),
-              status: String(data.status ?? "Submitted"),
-              submitDate: timestampCandidate.toDate(),
-              difficulty,
-            } as SubmissionRecord;
-          })
-          .filter((entry): entry is SubmissionRecord => entry !== null)
-          .sort((a, b) => b.submitDate.getTime() - a.submitDate.getTime());
+          return {
+            id: submissionDoc.id,
+            problemId,
+            problemName: String(data.problemName ?? "Untitled Problem"),
+            status: String(data.status ?? "Submitted"),
+            submitDate: timestampCandidate.toDate(),
+            difficulty,
+          } as SubmissionRecord;
+        })
+        .filter((entry): entry is SubmissionRecord => entry !== null)
+        .sort((a, b) => b.submitDate.getTime() - a.submitDate.getTime());
 
-        setSubmissions(mappedSubmissions);
-      } catch (error: unknown) {
-        const errorCode = (error as { code?: string }).code;
-        if (errorCode === "permission-denied") {
-          setErrorMessage(
-            "Permission denied while reading activity data. Deploy rules and sign in again."
-          );
-        } else {
-          console.error("Error loading activity:", error);
-          setErrorMessage("Could not load activity right now.");
-        }
-        setSubmissions([]);
-      } finally {
-        setLoading(false);
+      setSubmissions(mappedSubmissions);
+    } catch (error: unknown) {
+      const errorCode = (error as { code?: string }).code;
+      if (errorCode === "permission-denied") {
+        setErrorMessage(
+          "Permission denied while reading activity data. Deploy rules and sign in again."
+        );
+      } else {
+        console.error("Error loading activity:", error);
+        setErrorMessage("Could not load activity right now.");
       }
-    };
-
-    fetchActivity();
+      setSubmissions([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setSubmissions([]);
+      setLoading(false);
+      return;
+    }
+    fetchActivity();
+  }, [fetchActivity, user?.uid]);
 
   const acceptedSubmissions = useMemo(
     () => submissions.filter((submission) => submission.status === "Accepted"),
@@ -342,10 +350,11 @@ const SubmissionActivity = () => {
 
   if (loading) {
     return (
-      <div className="app-shell flex items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-b-4 border-[color:var(--accent)]" />
-          <p className="text-muted">Loading activity...</p>
+      <div className="app-shell">
+        <div className="page-container space-y-4">
+          <SkeletonCard lines={5} />
+          <SkeletonCard lines={5} />
+          <SkeletonCard lines={5} />
         </div>
       </div>
     );
@@ -360,11 +369,7 @@ const SubmissionActivity = () => {
             Activity Dashboard
           </h1>
           <p className="text-muted mt-2">Submission trends, solved progress, and coding consistency.</p>
-          {errorMessage && (
-            <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">
-              {errorMessage}
-            </p>
-          )}
+          {errorMessage && <InlineError message={errorMessage} onRetry={fetchActivity} className="mt-4" />}
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

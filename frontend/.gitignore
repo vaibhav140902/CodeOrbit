@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 .env
+src/admin-scripts/ServiceAccountkey.json
+src/admin-scripts/*.json
+!src/admin-scripts/package.json
+!src/admin-scripts/package-lock.json
+!src/admin-scripts/*.example.json
 
 # Editor directories and files
 .vscode/*

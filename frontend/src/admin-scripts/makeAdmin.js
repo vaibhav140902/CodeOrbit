@@ -13,7 +13,7 @@ const serviceAccountPath = serviceAccountCandidates
 
 if (!serviceAccountPath) {
   console.error(
-    "Missing service account json. Add one of these files in this folder: serviceAccountKey.json or ServiceAccountkey.json"
+    "Missing service account json. Add one of these files in this folder: serviceAccountKey.json or ServiceAccountkey.json (copy from serviceAccountKey.example.json)."
   );
   process.exit(1);
 }
@@ -40,9 +40,6 @@ async function makeAdmin(targetUid) {
     .set(
       {
         isAdmin: true,
-        role: "admin",
-        status: "active",
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
       { merge: true }
     );

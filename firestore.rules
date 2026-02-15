@@ -19,92 +19,43 @@ service cloud.firestore {
       return isAdminClaim() || isAdminDoc();
     }
 
-    function isSelf(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
-
-    function canCreateOwnUser(uid) {
-      return isSelf(uid)
-        && request.resource.data.isAdmin == false
-        && request.resource.data.points == 0
-        && request.resource.data.email is string;
-    }
-
-    function canUpdateOwnSafeFields(uid) {
-      return isSelf(uid)
-        && request.resource.data.isAdmin == resource.data.isAdmin
-        && request.resource.data.points == resource.data.points
-        && request.resource.data.email == resource.data.email;
-    }
-
     match /problems/{problemId} {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin();
     }
 
     match /users/{uid} {
-      allow read: if isSelf(uid) || isAdmin();
-      allow create: if canCreateOwnUser(uid) || isAdmin();
-      allow update: if isAdmin() || canUpdateOwnSafeFields(uid);
-      allow delete: if isAdmin();
-    }
-
-    match /leaderboard/{uid} {
-      allow read: if signedIn();
-      allow create: if isSelf(uid)
-        && request.resource.data.uid == uid
-        && request.resource.data.score is int
-        && request.resource.data.score >= 0
-        && request.resource.data.score <= 45
-        && request.resource.data.solvedCount is int
-        && request.resource.data.solvedCount >= 0
-        && request.resource.data.solvedCount <= 1
-        && request.resource.data.easySolved is int
-        && request.resource.data.mediumSolved is int
-        && request.resource.data.hardSolved is int
-        && request.resource.data.totalSubmissions is int
-        && request.resource.data.totalSubmissions == 1
-        && request.resource.data.totalAccepted is int
-        && request.resource.data.totalAccepted >= 0
-        && request.resource.data.totalAccepted <= 1
-        && request.resource.data.acceptanceRate is number
-        && request.resource.data.solvedProblemIds is list
-        && request.resource.data.solvedProblemIds.size() <= 1;
-
-      allow update: if isSelf(uid)
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.score is int
-        && request.resource.data.score >= resource.data.score
-        && request.resource.data.score <= resource.data.score + 45
-        && request.resource.data.solvedCount is int
-        && request.resource.data.solvedCount >= resource.data.solvedCount
-        && request.resource.data.solvedCount <= resource.data.solvedCount + 1
-        && request.resource.data.easySolved is int
-        && request.resource.data.easySolved >= resource.data.easySolved
-        && request.resource.data.easySolved <= resource.data.easySolved + 1
-        && request.resource.data.mediumSolved is int
-        && request.resource.data.mediumSolved >= resource.data.mediumSolved
-        && request.resource.data.mediumSolved <= resource.data.mediumSolved + 1
-        && request.resource.data.hardSolved is int
-        && request.resource.data.hardSolved >= resource.data.hardSolved
-        && request.resource.data.hardSolved <= resource.data.hardSolved + 1
-        && request.resource.data.totalSubmissions is int
-        && request.resource.data.totalSubmissions == resource.data.totalSubmissions + 1
-        && request.resource.data.totalAccepted is int
-        && request.resource.data.totalAccepted >= resource.data.totalAccepted
-        && request.resource.data.totalAccepted <= resource.data.totalAccepted + 1
-        && request.resource.data.acceptanceRate is number
-        && request.resource.data.solvedProblemIds is list
-        && request.resource.data.solvedProblemIds.size() >= resource.data.solvedProblemIds.size()
-        && request.resource.data.solvedProblemIds.size() <= resource.data.solvedProblemIds.size() + 1;
-
-      allow delete: if isAdmin();
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.isAdmin == false;
+      allow update, delete: if isAdmin();
     }
 
     match /submissions/{submissionId} {
       allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin();
+    }
+
+    match /leaderboard/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /subscriptions/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if false;
+    }
+
+    match /billingOrders/{orderId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    match /dailyAccessQuota/{dateKey} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }

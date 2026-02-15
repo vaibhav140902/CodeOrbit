@@ -3,6 +3,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../../utils/firebase";
 import { Link } from "react-router-dom";
 import { useTheme } from "../../hooks/useTheme";
+import { BRAND } from "../../config/brand";
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -37,19 +38,20 @@ export const ForgotPassword = () => {
   };
 
   return (
-    <div className="app-shell flex items-center justify-center px-6 py-10">
+    <div className="app-shell flex items-center justify-center px-3 py-6 sm:px-6 sm:py-10">
       <div className="w-full max-w-md">
         <div className="mb-5 flex items-center justify-between">
-          <Link to="/" className="brand-gradient text-2xl font-bold">
-            Vaibhav&apos;s Code
+          <Link to="/" className="inline-flex items-center gap-2 brand-gradient text-xl font-bold sm:text-2xl">
+            <img src={BRAND.markPath} alt={`${BRAND.name} logo`} className="h-6 w-6 rounded-md" />
+            {BRAND.name}
           </Link>
           <button onClick={toggleTheme} className="btn-ghost text-xs">
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
         </div>
 
-        <div className="surface-card p-8">
-          <h1 className="text-3xl font-bold">Reset password</h1>
+        <div className="surface-card p-5 sm:p-8">
+          <h1 className="text-2xl font-bold sm:text-3xl">Reset password</h1>
           <p className="text-muted mt-2 mb-8">We&apos;ll send a secure reset link to your email.</p>
 
           <form onSubmit={handleResetPassword} className="space-y-5">
