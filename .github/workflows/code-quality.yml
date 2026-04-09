@@ -18,6 +18,18 @@ permissions:
   contents: read
 
 jobs:
+  secret-hygiene:
+    name: Secret hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Ensure Firebase admin keys are not committed
+        run: |
+          test ! -f frontend/src/admin-scripts/serviceAccountKey.json
+          test ! -f frontend/src/admin-scripts/ServiceAccountkey.json
+
   frontend:
     name: Frontend lint and build
     runs-on: ubuntu-latest
