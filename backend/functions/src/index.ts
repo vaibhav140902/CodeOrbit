@@ -1,84 +1,101 @@
-import {setGlobalOptions} from "firebase-functions/v2";
+import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
+import cors from "cors";
 
-import {onRequest, onCall} from "firebase-functions/v2/https";
+setGlobalOptions({ maxInstances: 20, region: "asia-south2" });
 
-import * as logger from "firebase-functions/logger";
-import { initializeApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { SUPPORTED_LANGUAGES } from "./utils";
-initializeApp();
+const allowedOrigins = [
+  "https://codeorbit-ai-rebuild.vercel.app",
+  "https://leetcode-clone-3ac0a.web.app",
+  "https://leetcode-clone-3ac0a.firebaseapp.com",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+] as const;
 
-const db = getFirestore();
+const callableOptions = {
+  enforceAppCheck: process.env.ENFORCE_APPCHECK === "true",
+  cors: allowedOrigins,
+};
 
-setGlobalOptions({maxInstances: 10});
+const loadRuntime = async () => import("./runtime");
 
-export const helloWorld = onRequest((request, response) => {
-  logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello from Firebase!");
+const corsMiddleware = cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 });
 
-export const getSubmissions = onRequest({ cors: true }, async (request, response) => {
-    // const offset = request.body.offset;
-    const limit = request.body.limit || 10;
-    const res = await db.collection("submissions").limit(limit).orderBy("submitTime", "desc").get();
-    const submissions = [];
-    console.log("res.docs")
-    console.log(res.docs.length)
-    res.docs.forEach(async doc => {
-        console.log("doc1");
-        submissions.push(new Promise(async (resolve) => {
-                console.log(doc.data().user)
-                const snapshot = await doc.data().user.get();
-                resolve({
-                    submission: doc.data(),
-                    user: snapshot.data()
-                })
-        }))
-    })
+const runCors = (request: any, response: any) =>
+  new Promise<void>((resolve, reject) => {
+    corsMiddleware(request, response, (result) => {
+      if (result instanceof Error) {
+        reject(result);
+        return;
+      }
+      resolve();
+    });
+  });
 
-    response.send({
-        response: await Promise.all(submissions)
-    })
-})
+const wrapCallable = (handlerName: string) =>
+  onCall(callableOptions, async (request) => {
+    const runtime = await loadRuntime();
+    const handler = runtime[handlerName as keyof typeof runtime];
 
-export const submit = onCall(async (request) => {
-    const uid = request.auth.uid;
-    const language = request.data.language;
-    const submission = request.data.submission;
-    const problemId = request.data.problemId;
-
-    if (!uid) {
-        return {
-            message: "Unauthorized"
-        }
+    if (typeof handler !== "function") {
+      throw new HttpsError("internal", `Missing runtime callable handler: ${handlerName}`);
     }
 
-    if (!SUPPORTED_LANGUAGES.includes(language)) {
-        return {
-            message: "Language not supported"
-        }
+    return (handler as (request: unknown) => unknown)(request);
+  });
+
+const wrapHttp = (handlerName: string) =>
+  onRequest(async (request, response) => {
+    await runCors(request, response);
+    if (request.method === "OPTIONS") {
+      response.status(204).send("");
+      return;
     }
 
-    const problem = await db.collection("problems").doc(problemId?.toString()).get();
+    const runtime = await loadRuntime();
+    const handler = runtime[handlerName as keyof typeof runtime];
 
-    if (!problem.exists) {
-        return {
-            message: "Problem Doesnt exist"
-        }
+    if (typeof handler !== "function") {
+      throw new HttpsError("internal", `Missing runtime HTTP handler: ${handlerName}`);
     }
 
-    const doc = await db.collection("submissions").add({
-        language,
-        submission,
-        problemId,
-        userId: uid,
-        submitTime: new Date(),
-        workerTryCount: 0,
-        status: "PENDING"
-    })
+    return (handler as (request: unknown, response: unknown) => unknown)(request, response);
+  });
 
-    return {
-        message: "Submission done",
-        id: doc.id
-    }
-})
+export const helloWorld = wrapHttp("helloWorldHandler");
+export const getSubmissions = wrapHttp("getSubmissionsHandler");
+export const listProblems = wrapCallable("listProblemsHandler");
+export const getProblemDetail = wrapCallable("getProblemDetailHandler");
+export const bootstrapUserProfile = wrapCallable("bootstrapUserProfileHandler");
+export const getViewerProfile = wrapCallable("getViewerProfileHandler");
+export const getDashboardSummary = wrapCallable("getDashboardSummaryHandler");
+export const getBillingSummary = wrapCallable("getBillingSummaryHandler");
+export const getActivitySummary = wrapCallable("getActivitySummaryHandler");
+export const getLeaderboardSummary = wrapCallable("getLeaderboardSummaryHandler");
+export const getAdminSummary = wrapCallable("getAdminSummaryHandler");
+export const getRecruiterBetaWorkspace = wrapCallable("getRecruiterBetaWorkspaceHandler");
+export const saveRecruiterCandidateReview = wrapCallable("saveRecruiterCandidateReviewHandler");
+export const getCampusBetaWorkspace = wrapCallable("getCampusBetaWorkspaceHandler");
+export const saveCampusCohortIntervention = wrapCallable("saveCampusCohortInterventionHandler");
+export const setWorkspaceRole = wrapCallable("setWorkspaceRoleHandler");
+export const getAiProblemAssist = wrapCallable("getAiProblemAssistHandler");
+export const generateMockInterviewFeedback = wrapCallable("generateMockInterviewFeedbackHandler");
+export const generateResumeDraft = wrapCallable("generateResumeDraftHandler");
+export const exportResumePdf = wrapCallable("exportResumePdfHandler");
+export const updateViewerPreferences = wrapCallable("updateViewerPreferencesHandler");
+export const runCode = wrapCallable("runCodeHandler");
+export const submit = wrapCallable("submitHandler");
+export const checkDailyFreeQuota = wrapCallable("checkDailyFreeQuotaHandler");
+export const claimDailyFreePass = wrapCallable("claimDailyFreePassHandler");
+export const createBillingOrder = wrapCallable("createBillingOrderHandler");
+export const verifyBillingPayment = wrapCallable("verifyBillingPaymentHandler");
+export const razorpayWebhook = wrapHttp("razorpayWebhookHandler");

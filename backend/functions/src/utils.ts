@@ -1,1 +1,16 @@
-export const SUPPORTED_LANGUAGES = ["js", "cpp"];
+export const SUPPORTED_LANGUAGES = [
+  "javascript",
+  "typescript",
+  "python",
+  "java",
+  "cpp",
+  "c",
+  "csharp",
+  "go",
+  "rust",
+  "kotlin",
+  "swift",
+  "php",
+  "ruby",
+  "dart",
+];

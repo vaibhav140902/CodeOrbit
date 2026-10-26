@@ -8,6 +8,9 @@
     "strict": false,
     "target": "es2017",
     "esModuleInterop": true,
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types"],
+    "skipLibCheck": true
   },
   "compileOnSave": true,
   "include": [
