@@ -1,131 +1,95 @@
 import { Link } from "react-router-dom";
 import { useRecoilValue } from "recoil";
 import { userAtom } from "../store/atoms/user";
+import { BRAND } from "../config/brand";
+
+const featureCards = [
+  {
+    title: "Focused Practice",
+    description: "Curated problems grouped by topic and difficulty for daily consistency.",
+    tag: "Practice",
+  },
+  {
+    title: "Measured Progress",
+    description: "Leaderboard rank, acceptance rate, streaks, and solved-by-difficulty analytics.",
+    tag: "Track",
+  },
+  {
+    title: "Real Submissions",
+    description: "Run and submit in multiple languages with persisted history per problem.",
+    tag: "Execute",
+  },
+];
 
 export const Landing = () => {
   const user = useRecoilValue(userAtom);
+  const username = user.user?.email?.split("@")[0] || "Coder";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
-      {/* Hero Section */}
-      <div className="container mx-auto px-6 py-20">
-        <div className="text-center space-y-8">
-          {/* Welcome Message */}
-          <div className="space-y-4">
-            <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent animate-pulse">
-              Welcome, {user.user?.email?.split('@')[0] || 'Coder'}!
-            </h1>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Master algorithms, ace interviews, and become a better developer
-            </p>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-12">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300">
-              <div className="text-4xl font-bold">150+</div>
-              <div className="text-blue-200 mt-2">Problems</div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-600 to-purple-800 p-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300">
-              <div className="text-4xl font-bold">1000+</div>
-              <div className="text-purple-200 mt-2">Solutions</div>
-            </div>
-            <div className="bg-gradient-to-br from-pink-600 to-pink-800 p-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300">
-              <div className="text-4xl font-bold">500+</div>
-              <div className="text-pink-200 mt-2">Users</div>
-            </div>
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="flex justify-center gap-4 mt-12">
-            <Link
-              to="/problems"
-              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold text-lg shadow-2xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all duration-300"
-            >
-              Start Coding →
-            </Link>
-            <Link
-              to="/leaderboard"
-              className="px-8 py-4 bg-gray-800 border-2 border-gray-700 rounded-xl font-semibold text-lg hover:bg-gray-700 transform hover:scale-105 transition-all duration-300"
-            >
-              View Rankings
-            </Link>
-          </div>
-        </div>
-
-        {/* Features Section */}
-        <div className="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {[
-            {
-              icon: "🎯",
-              title: "Practice",
-              desc: "Solve coding problems daily"
-            },
-            {
-              icon: "🏆",
-              title: "Compete",
-              desc: "Climb the leaderboard"
-            },
-            {
-              icon: "📊",
-              title: "Track",
-              desc: "Monitor your progress"
-            },
-            {
-              icon: "💡",
-              title: "Learn",
-              desc: "Master algorithms"
-            }
-          ].map((feature, idx) => (
-            <div
-              key={idx}
-              className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 p-6 rounded-xl hover:border-purple-500 transition-all duration-300 group"
-            >
-              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">
-                {feature.icon}
+    <div className="app-shell">
+      <div className="page-container">
+        <section className="surface-card mb-6 overflow-hidden p-5 sm:p-6 md:mb-8 md:p-10">
+          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr] md:items-center">
+            <div>
+              <p className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+                {BRAND.tagline}
+              </p>
+              <h1 className="text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
+                Build interview confidence with <span className="brand-gradient">{BRAND.name}</span>
+              </h1>
+              <p className="text-muted mt-4 max-w-xl text-base sm:text-lg">
+                Welcome {username}. Follow curated problem tracks by topic and company, then ship stronger solutions.
+              </p>
+              <div className="mt-6 grid grid-cols-1 gap-2 sm:mt-8 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+                <Link to="/problems" className="btn-primary text-center">
+                  Start solving
+                </Link>
+                <Link to="/prep" className="btn-secondary text-center">
+                  Explore prep tracks
+                </Link>
+                <Link to="/leaderboard" className="btn-secondary text-center">
+                  View leaderboard
+                </Link>
+                <Link to="/pricing" className="btn-ghost text-center">
+                  View pricing
+                </Link>
               </div>
-              <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-              <p className="text-gray-400">{feature.desc}</p>
             </div>
-          ))}
-        </div>
 
-        {/* Recent Activity */}
-        <div className="mt-24">
-          <h2 className="text-3xl font-bold mb-8 text-center">Recent Activity</h2>
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 max-w-3xl mx-auto">
-            <div className="space-y-4">
-              {[
-                { user: "You", problem: "Two Sum", time: "2 hours ago", status: "Solved" },
-                { user: "Rahul", problem: "Reverse String", time: "3 hours ago", status: "Solved" },
-                { user: "Priya", problem: "Merge Intervals", time: "5 hours ago", status: "Attempted" }
-              ].map((activity, idx) => (
-                <div
-                  key={idx}
-                  className="flex justify-between items-center p-4 bg-gray-900/50 rounded-lg hover:bg-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center font-bold">
-                      {activity.user[0]}
-                    </div>
-                    <div>
-                      <div className="font-semibold">{activity.user}</div>
-                      <div className="text-sm text-gray-400">{activity.problem}</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-semibold ${
-                      activity.status === "Solved" ? "text-green-400" : "text-yellow-400"
-                    }`}>
-                      {activity.status}
-                    </div>
-                    <div className="text-sm text-gray-500">{activity.time}</div>
-                  </div>
+            <div className="surface-soft p-4 sm:p-6">
+              <p className="font-mono text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+                Snapshot
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+                <div className="rounded-xl border border-[color:var(--border)] p-3">
+                  <p className="text-muted text-xs">Problems</p>
+                  <p className="mt-1 text-xl font-bold sm:text-2xl">15+</p>
                 </div>
-              ))}
+                <div className="rounded-xl border border-[color:var(--border)] p-3">
+                  <p className="text-muted text-xs">Languages</p>
+                  <p className="mt-1 text-xl font-bold sm:text-2xl">10+</p>
+                </div>
+                <div className="rounded-xl border border-[color:var(--border)] p-3 col-span-2 sm:col-span-1">
+                  <p className="text-muted text-xs">Metrics</p>
+                  <p className="mt-1 text-xl font-bold sm:text-2xl">Live</p>
+                </div>
+              </div>
+              <p className="text-muted mt-4 text-sm">
+                Keep submitting to improve score, rank, and streak.
+              </p>
             </div>
           </div>
-        </div>
+        </section>
+
+        <section className="grid gap-3 sm:gap-4 md:grid-cols-3">
+          {featureCards.map((feature) => (
+            <article key={feature.title} className="surface-card p-5 sm:p-6">
+              <p className="font-mono text-xs uppercase tracking-[0.16em] text-[color:var(--accent)]">{feature.tag}</p>
+              <h2 className="mt-3 text-lg font-semibold sm:text-xl">{feature.title}</h2>
+              <p className="text-muted mt-2 text-sm leading-6">{feature.description}</p>
+            </article>
+          ))}
+        </section>
       </div>
     </div>
   );

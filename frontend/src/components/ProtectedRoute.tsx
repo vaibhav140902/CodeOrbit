@@ -20,11 +20,6 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
     );
   }
 
-  // TEMPORARY: Allow access without auth for testing
-  if (process.env.NODE_ENV === 'development') {
-    return <>{children}</>;
-  }
-
   if (!user) {
     return <Navigate to="/login" replace />;
   }

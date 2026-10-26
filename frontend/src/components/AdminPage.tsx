@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { db, auth } from "../utils/firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, setDoc } from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { db } from "../utils/firebase";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 interface Problem {
   id: string;
@@ -11,6 +10,13 @@ interface Problem {
   description: string;
   examples: string;
   constraints: string;
+  executionMode?: "stdin" | "function";
+  functionSignature?: {
+    functionName: string;
+    returnType: string;
+    params: Array<{ name: string; type: string }>;
+    javaClassName?: string;
+  };
 }
 
 interface User {
@@ -25,6 +31,7 @@ export const AdminPage = () => {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState<"problems" | "users">("problems");
+  const [usersError, setUsersError] = useState<string | null>(null);
   
   // Form states
   const [problemName, setProblemName] = useState("");
@@ -33,6 +40,12 @@ export const AdminPage = () => {
   const [description, setDescription] = useState("");
   const [examples, setExamples] = useState("");
   const [constraints, setConstraints] = useState("");
+  const [executionMode, setExecutionMode] = useState<"stdin" | "function">("stdin");
+  const [functionName, setFunctionName] = useState("");
+  const [returnType, setReturnType] = useState("int");
+  const [paramsJson, setParamsJson] = useState('[{\"name\":\"nums\",\"type\":\"int[]\"}]');
+  const [exampleCasesJson, setExampleCasesJson] = useState("");
+  const [submitCasesJson, setSubmitCasesJson] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -55,46 +68,28 @@ export const AdminPage = () => {
 
   const fetchUsers = async () => {
     try {
+      setUsersError(null);
       const querySnapshot = await getDocs(collection(db, "users"));
       const usersData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as User));
       setUsers(usersData);
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorCode = (error as { code?: string })?.code;
+      if (errorCode === "permission-denied") {
+        setUsersError("Permission denied for users list. Deploy Firestore rules, then refresh this page.");
+        return;
+      }
       console.error("Error fetching users:", error);
+      setUsersError("Failed to fetch users.");
     }
   };
 
-  // NEW: Create admin account function
-  const createAdminAccount = async () => {
-    try {
-      setLoading(true);
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        'admin@test.com',
-        'admin123'
-      );
-      
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        email: 'admin@test.com',
-        isAdmin: true,
-        points: 0,
-        createdAt: new Date()
-      });
-      
-      alert('✅ Admin account created!\n\nEmail: admin@test.com\nPassword: admin123\n\nYou can now sign in with these credentials.');
-      fetchUsers();
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        alert('Admin account already exists! Use: admin@test.com / admin123');
-      } else {
-        console.error('Error creating admin:', error);
-        alert('Error: ' + error.message);
-      }
-    } finally {
-      setLoading(false);
-    }
+  const openAdminSetupGuide = () => {
+    alert(
+      "Admin setup:\n\n1) Create a normal user from Sign Up.\n2) Copy that user's uid from Firebase Authentication.\n3) Run this script:\n\ncd frontend/src/admin-scripts\nnode makeAdmin.js <uid>\n\nThis sets both custom claim and users/{uid}.isAdmin=true."
+    );
   };
 
   const handleAddProblem = async (e: React.FormEvent) => {
@@ -102,15 +97,85 @@ export const AdminPage = () => {
     setLoading(true);
 
     try {
-      await addDoc(collection(db, "problems"), {
+      const constraintsList = constraints
+        .split(/\r?\n/)
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+
+      const payload: Record<string, unknown> = {
         problemName,
         tags: tags.split(",").map(tag => tag.trim()),
         difficulty,
         description,
         examples,
         constraints,
-        createdAt: new Date()
-      });
+        constraintsList,
+        executionMode,
+        createdAt: serverTimestamp(),
+      };
+
+      if (executionMode === "function") {
+        let parsedParams: Array<{ name: string; type: string }> = [];
+        let parsedExampleCases: unknown[] = [];
+        let parsedSubmitCases: unknown[] = [];
+
+        try {
+          const rawParams = JSON.parse(paramsJson) as unknown;
+          if (!Array.isArray(rawParams)) throw new Error();
+          parsedParams = rawParams
+            .map((entry) => {
+              if (!entry || typeof entry !== "object") return null;
+              const row = entry as Record<string, unknown>;
+              const name = typeof row.name === "string" ? row.name.trim() : "";
+              const type = typeof row.type === "string" ? row.type.trim() : "";
+              if (!name || !type) return null;
+              return { name, type };
+            })
+            .filter((entry): entry is { name: string; type: string } => entry !== null);
+        } catch (_error) {
+          throw new Error("Params JSON must be a valid array of {name,type} objects.");
+        }
+
+        if (!functionName.trim() || parsedParams.length === 0 || !returnType.trim()) {
+          throw new Error("Function mode requires function name, return type, and at least one parameter.");
+        }
+
+        if (exampleCasesJson.trim()) {
+          try {
+            const raw = JSON.parse(exampleCasesJson) as unknown;
+            if (!Array.isArray(raw)) throw new Error();
+            parsedExampleCases = raw;
+          } catch (_error) {
+            throw new Error("Example cases JSON must be a valid array.");
+          }
+        }
+
+        if (submitCasesJson.trim()) {
+          try {
+            const raw = JSON.parse(submitCasesJson) as unknown;
+            if (!Array.isArray(raw)) throw new Error();
+            parsedSubmitCases = raw;
+          } catch (_error) {
+            throw new Error("Submit cases JSON must be a valid array.");
+          }
+        }
+
+        payload.functionSignature = {
+          functionName: functionName.trim(),
+          returnType: returnType.trim(),
+          params: parsedParams,
+          javaClassName: "Solution",
+        };
+
+        if (parsedExampleCases.length > 0) {
+          payload.exampleCases = parsedExampleCases;
+        }
+        if (parsedSubmitCases.length > 0) {
+          payload.submitCases = parsedSubmitCases;
+        }
+      }
+
+      await addDoc(collection(db, "problems"), payload);
 
       alert("Problem added successfully!");
       setProblemName("");
@@ -119,10 +184,16 @@ export const AdminPage = () => {
       setDescription("");
       setExamples("");
       setConstraints("");
+      setExecutionMode("stdin");
+      setFunctionName("");
+      setReturnType("int");
+      setParamsJson('[{\"name\":\"nums\",\"type\":\"int[]\"}]');
+      setExampleCasesJson("");
+      setSubmitCasesJson("");
       fetchProblems();
     } catch (error) {
       console.error("Error adding problem:", error);
-      alert("Failed to add problem");
+      alert(error instanceof Error ? error.message : "Failed to add problem");
     } finally {
       setLoading(false);
     }
@@ -157,13 +228,12 @@ export const AdminPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white py-12 px-6">
       <div className="max-w-7xl mx-auto">
-        {/* CREATE ADMIN BUTTON - FIXED POSITION */}
+        {/* ADMIN SETUP HELP */}
         <button 
-          onClick={createAdminAccount}
-          disabled={loading}
-          className="fixed top-24 right-8 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 rounded-xl font-bold shadow-2xl hover:shadow-green-500/50 transform hover:scale-105 transition-all disabled:opacity-50 z-50"
+          onClick={openAdminSetupGuide}
+          className="fixed top-24 right-8 bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 rounded-xl font-bold shadow-2xl hover:shadow-green-500/50 transform hover:scale-105 transition-all z-50"
         >
-          🔐 Create Admin Account
+          🔐 Admin Setup Help
         </button>
 
         {/* Header */}
@@ -238,6 +308,20 @@ export const AdminPage = () => {
 
                 <div>
                   <label className="block text-gray-400 text-sm font-medium mb-2">
+                    Execution Mode
+                  </label>
+                  <select
+                    value={executionMode}
+                    onChange={(e) => setExecutionMode(e.target.value as "stdin" | "function")}
+                    className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="stdin">stdin (classic program mode)</option>
+                    <option value="function">function (CodeOrbit style)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">
                     Tags (comma separated) *
                   </label>
                   <input
@@ -290,6 +374,73 @@ export const AdminPage = () => {
                   />
                 </div>
 
+                {executionMode === "function" && (
+                  <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 space-y-4">
+                    <h3 className="font-semibold text-blue-300">Function Judge Settings</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-gray-300 text-sm font-medium mb-2">Function Name *</label>
+                        <input
+                          type="text"
+                          value={functionName}
+                          onChange={(e) => setFunctionName(e.target.value)}
+                          placeholder="twoSum"
+                          className="w-full px-4 py-3 bg-gray-900/60 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-300 text-sm font-medium mb-2">Return Type *</label>
+                        <input
+                          type="text"
+                          value={returnType}
+                          onChange={(e) => setReturnType(e.target.value)}
+                          placeholder="int[]"
+                          className="w-full px-4 py-3 bg-gray-900/60 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        Params JSON (array of {"{name, type}"})
+                      </label>
+                      <textarea
+                        value={paramsJson}
+                        onChange={(e) => setParamsJson(e.target.value)}
+                        rows={3}
+                        className="w-full px-4 py-3 font-mono text-sm bg-gray-900/60 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                        placeholder='[{"name":"nums","type":"int[]"},{"name":"target","type":"int"}]'
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        Example Cases JSON (optional)
+                      </label>
+                      <textarea
+                        value={exampleCasesJson}
+                        onChange={(e) => setExampleCasesJson(e.target.value)}
+                        rows={4}
+                        className="w-full px-4 py-3 font-mono text-sm bg-gray-900/60 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                        placeholder='[{"input":[[2,7,11,15],9],"output":[0,1],"explanation":"nums[0] + nums[1] = 9"}]'
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        Submit Cases JSON (optional)
+                      </label>
+                      <textarea
+                        value={submitCasesJson}
+                        onChange={(e) => setSubmitCasesJson(e.target.value)}
+                        rows={4}
+                        className="w-full px-4 py-3 font-mono text-sm bg-gray-900/60 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                        placeholder='[{"input":[[3,3],6],"output":[0,1]}]'
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={loading}
@@ -327,9 +478,17 @@ export const AdminPage = () => {
                               key={idx}
                               className="px-3 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-xs"
                             >
-                              {tag}
+                            {tag}
+                          </span>
+                        ))}
+                          <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full text-xs">
+                            {problem.executionMode === "function" ? "function" : "stdin"}
+                          </span>
+                          {problem.executionMode === "function" && problem.functionSignature?.functionName && (
+                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-full text-xs">
+                              {problem.functionSignature.functionName}()
                             </span>
-                          ))}
+                          )}
                         </div>
                         <p className="text-gray-400 text-sm">{problem.description}</p>
                       </div>
@@ -354,6 +513,11 @@ export const AdminPage = () => {
         {activeTab === "users" && (
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-8">
             <h2 className="text-2xl font-bold mb-6">All Users</h2>
+            {usersError && (
+              <p className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {usersError}
+              </p>
+            )}
             <div className="space-y-4">
               {users.map((user) => (
                 <div
