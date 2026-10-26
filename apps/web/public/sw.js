@@ -5,7 +5,3 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
-
-self.addEventListener("fetch", () => {
-  // Network-first keeps dynamic coding content fresh while still making the app installable.
-});
