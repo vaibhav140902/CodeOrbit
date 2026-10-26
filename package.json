@@ -1,0 +1,25 @@
+{
+  "name": "codeorbit-workspace",
+  "private": true,
+  "packageManager": "npm@11.7.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:web": "npm run dev --workspace @codeorbit/web",
+    "build": "turbo run build",
+    "build:web": "npm run build --workspace @codeorbit/web",
+    "lint": "turbo run lint",
+    "lint:web": "npm run lint --workspace @codeorbit/web",
+    "typecheck": "turbo run typecheck",
+    "typecheck:web": "npm run typecheck --workspace @codeorbit/web",
+    "legacy:frontend": "npm run dev --prefix frontend",
+    "legacy:functions": "npm run serve --prefix backend/functions"
+  },
+  "devDependencies": {
+    "turbo": "^2.8.17",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,17 @@
+.git
+.vercel
+.turbo
+node_modules
+backend/node_modules
+backend/functions/node_modules
+frontend/node_modules
+apps/web/.next
+frontend/dist
+backend/functions/lib
+backend/functions/.env
+backend/functions/.env.*
+apps/web/.env.local
+apps/web/.env.production.local
+*.log
+firebase-debug.log
+firebase-debug.*.log

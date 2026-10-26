@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.03em;
+  }
+}
+
+@layer components {
+  .section-heading {
+    @apply text-3xl font-semibold sm:text-4xl;
+  }
+
+  .section-copy {
+    @apply mt-3 max-w-3xl text-sm leading-7 text-[color:var(--text-muted)] sm:text-base;
+  }
+
+  .detail-list {
+    @apply mt-4 space-y-3 text-sm leading-7 text-[color:var(--text-soft)];
+  }
+
+  .link-subtle {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--text-main)] transition hover:text-[color:var(--accent)];
+  }
+
+  .marketing-grid {
+    @apply grid gap-4 md:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .value-card {
+    @apply surface-card p-5 sm:p-6;
+  }
+
+  .divider-top {
+    @apply border-t border-[color:var(--border)];
+  }
+}
