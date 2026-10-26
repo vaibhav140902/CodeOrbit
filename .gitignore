@@ -70,10 +70,10 @@ dist/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
+# dotenv environment variables and local overrides
 .env
-backend/functions/.env
-backend/functions/.env.*
+.env.*
+!**/.env.example
 frontend/src/admin-scripts/ServiceAccountkey.json
 **/serviceAccount*.json
 **/service-account*.json

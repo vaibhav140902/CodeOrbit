@@ -3,14 +3,28 @@ name: Code Quality
 on:
   pull_request:
     paths:
+      - ".github/scripts/**"
       - ".github/workflows/code-quality.yml"
+      - "apps/**"
+      - "package-lock.json"
+      - "package.json"
+      - "packages/**"
+      - "tsconfig.base.json"
+      - "turbo.json"
       - "frontend/**"
       - "backend/functions/**"
   push:
     branches:
       - main
     paths:
+      - ".github/scripts/**"
       - ".github/workflows/code-quality.yml"
+      - "apps/**"
+      - "package-lock.json"
+      - "package.json"
+      - "packages/**"
+      - "tsconfig.base.json"
+      - "turbo.json"
       - "frontend/**"
       - "backend/functions/**"
 
@@ -18,17 +32,51 @@ permissions:
   contents: read
 
 jobs:
-  secret-hygiene:
-    name: Secret hygiene
+  repo-hygiene:
+    name: Repository hygiene
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Ensure Firebase admin keys are not committed
-        run: |
-          test ! -f frontend/src/admin-scripts/serviceAccountKey.json
-          test ! -f frontend/src/admin-scripts/ServiceAccountkey.json
+      - name: Check tracked files for secrets and generated artifacts
+        run: bash .github/scripts/repo-hygiene.sh
+
+  workspace-web:
+    name: Workspace web lint, typecheck, and build
+    if: ${{ hashFiles('package.json') != '' && hashFiles('package-lock.json') != '' && hashFiles('apps/web/package.json') != '' }}
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SITE_URL: https://codeorbit.app
+      NEXT_PUBLIC_FIREBASE_API_KEY: ci-demo-api-key
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ci-demo.firebaseapp.com
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ci-demo-project
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ci-demo.firebasestorage.app
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "1234567890"
+      NEXT_PUBLIC_FIREBASE_APP_ID: "1:1234567890:web:abcdef123456"
+      NEXT_PUBLIC_FIREBASE_FUNCTIONS_REGION: asia-south2
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Lint workspace web app
+        run: npm run lint:web
+
+      - name: Typecheck workspace web app
+        run: npm run typecheck:web
+
+      - name: Build workspace web app
+        run: npm run build:web
 
   frontend:
     name: Frontend lint and build
