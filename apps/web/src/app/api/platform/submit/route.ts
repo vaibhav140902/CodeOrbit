@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       expectedOutput: input.expectedOutput,
     });
 
-    const viewer = getViewerContextFromHeaders(request.headers);
+    const viewer = await getViewerContextFromHeaders(request.headers);
     let persistedId: string | null = null;
     if (viewer.uid || viewer.email) {
       const persisted = await recordSubmissionData(viewer, {

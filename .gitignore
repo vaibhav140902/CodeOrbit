@@ -82,3 +82,5 @@ frontend/src/admin-scripts/ServiceAccountkey.json
 # dataconnect generated files
 .dataconnect
 .vercel
+.codeorbit-cache/
+

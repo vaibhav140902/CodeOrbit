@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     assertRateLimit(`billing-order:${getRequestKey(request)}`, 15, 60_000);
     const body = await request.json().catch(() => null);
     const input = createOrderInputSchema.parse(body);
-    const viewer = getViewerContextFromHeaders(request.headers);
+    const viewer = await getViewerContextFromHeaders(request.headers);
 
     if (!viewer.uid || !viewer.email) {
       return NextResponse.json({ message: "Sign in required to create an order." }, { status: 401 });

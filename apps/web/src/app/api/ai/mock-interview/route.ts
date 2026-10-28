@@ -13,7 +13,7 @@ const getRequestKey = (request: NextRequest) =>
 
 export async function POST(request: NextRequest) {
   let baselineScore = 72;
-  const viewer = getViewerContextFromHeaders(request.headers);
+  const viewer = await getViewerContextFromHeaders(request.headers);
 
   try {
     assertRateLimit(`mock-interview:${getRequestKey(request)}`, 10, 60_000);

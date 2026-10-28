@@ -18,7 +18,7 @@ export const assertPaidFeatureAccess = async (headers: Headers) => {
     return;
   }
 
-  const viewer = getViewerContextFromHeaders(headers);
+  const viewer = await getViewerContextFromHeaders(headers);
   if (!viewer.uid || !viewer.email) {
     throw new AccessControlError("Sign in to use this paid feature.", 401);
   }

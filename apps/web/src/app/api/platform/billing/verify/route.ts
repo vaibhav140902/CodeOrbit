@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     assertRateLimit(`billing-verify:${getRequestKey(request)}`, 15, 60_000);
     const body = await request.json().catch(() => null);
     const input = verifyInputSchema.parse(body);
-    const viewer = getViewerContextFromHeaders(request.headers);
+    const viewer = await getViewerContextFromHeaders(request.headers);
 
     if (!viewer.uid || !viewer.email) {
       return NextResponse.json({ message: "Sign in required to verify payment." }, { status: 401 });

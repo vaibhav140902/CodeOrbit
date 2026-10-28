@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
     if (!input.sampleMode) {
       await assertPaidFeatureAccess(request.headers);
     }
-    const draft = await generateResumeDraftWithGemini(input, getViewerContextFromHeaders(request.headers));
+    const viewer = await getViewerContextFromHeaders(request.headers);
+    const draft = await generateResumeDraftWithGemini(input, viewer);
     return NextResponse.json(draft);
   } catch (error) {
     console.error("Resume draft route failed:", error);

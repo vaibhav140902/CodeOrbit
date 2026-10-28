@@ -16,7 +16,7 @@ const ADMIN_EMAILS = new Set(
 );
 
 export async function GET(request: NextRequest) {
-  const viewer = getViewerContextFromHeaders(request.headers);
+  const viewer = await getViewerContextFromHeaders(request.headers);
   if (!viewer.uid || !viewer.email) {
     return NextResponse.json({ message: "Authentication required." }, { status: 401 });
   }

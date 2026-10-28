@@ -5,7 +5,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const profile = await getViewerProfileData(getViewerContextFromHeaders(request.headers));
+  const viewer = await getViewerContextFromHeaders(request.headers);
+  const profile = await getViewerProfileData(viewer);
 
   if (!profile) {
     return NextResponse.json({ message: "Viewer context unavailable." }, { status: 401 });

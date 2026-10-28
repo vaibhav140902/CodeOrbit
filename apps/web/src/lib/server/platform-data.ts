@@ -1,4 +1,6 @@
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHmac, createVerify, randomUUID, timingSafeEqual } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import {
   type ActivitySummary,
   type AdminSummary,
@@ -327,29 +329,229 @@ const countRows = async (table: string, params: Record<string, string | number |
   return Number.isFinite(total) ? total : 0;
 };
 
-const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
+interface CachedCertificates {
+  certs: Record<string, string>;
+  expiresAt: number;
+}
+
+let googleCertCache: CachedCertificates | null = null;
+
+const getGooglePublicCerts = async (): Promise<Record<string, string>> => {
+  const now = Date.now();
+  if (googleCertCache && googleCertCache.expiresAt > now) {
+    return googleCertCache.certs;
+  }
+
+  try {
+    const res = await fetch(
+      "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+      { cache: "no-store" }
+    );
+    if (!res.ok) {
+      throw new Error(`Failed to fetch Google certs: HTTP ${res.status}`);
+    }
+
+    const certs = (await res.json()) as Record<string, string>;
+    const cacheControl = res.headers.get("cache-control") || "";
+    const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
+    const maxAgeSec = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : 3600;
+
+    googleCertCache = {
+      certs,
+      expiresAt: now + maxAgeSec * 1000,
+    };
+    return certs;
+  } catch (error) {
+    if (googleCertCache) {
+      return googleCertCache.certs;
+    }
+    console.warn("Could not retrieve Google certificates for JWT verification:", error);
+    return {};
+  }
+};
+
+const verifyFirebaseIdToken = async (token: string): Promise<Record<string, unknown> | null> => {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) {
       return null;
     }
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json = Buffer.from(base64, "base64").toString("utf8");
-    const payload = JSON.parse(json) as Record<string, unknown>;
-    if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) {
+
+    const [headerB64, payloadB64, signatureB64] = parts;
+    const headerJson = Buffer.from(headerB64.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+    const header = JSON.parse(headerJson) as { alg?: string; kid?: string };
+
+    if (header.alg !== "RS256" || !header.kid) {
       return null;
     }
+
+    const payloadJson = Buffer.from(payloadB64.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+    const payload = JSON.parse(payloadJson) as Record<string, unknown>;
+
+    const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "leetcode-clone-3ac0a").trim();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    // 1. Expiration check with 300s clock skew tolerance
+    if (typeof payload.exp !== "number" || payload.exp < nowSec - 300) {
+      return null;
+    }
+    // 2. Issued-at check
+    if (typeof payload.iat !== "number" || payload.iat > nowSec + 300) {
+      return null;
+    }
+    // 3. Audience check
+    if (payload.aud !== projectId) {
+      return null;
+    }
+    // 4. Issuer check
+    if (payload.iss !== `https://securetoken.google.com/${projectId}`) {
+      return null;
+    }
+    // 5. Subject check
+    if (typeof payload.sub !== "string" || payload.sub.trim() === "") {
+      return null;
+    }
+
+    // Cryptographic RS256 signature verification using Google's public key
+    const certs = await getGooglePublicCerts();
+    const cert = certs[header.kid];
+    if (!cert) {
+      return null;
+    }
+
+    const verifier = createVerify("RSA-SHA256");
+    verifier.update(`${headerB64}.${payloadB64}`);
+    const signatureBuffer = Buffer.from(signatureB64.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    const isSignatureValid = verifier.verify(cert, signatureBuffer);
+
+    if (!isSignatureValid) {
+      return null;
+    }
+
     return payload;
-  } catch {
+  } catch (error) {
+    console.warn("Cryptographic token verification error:", error);
     return null;
   }
 };
 
-export const getViewerContextFromHeaders = (headers: Headers): ViewerContext => {
+interface LocalUserRecord {
+  id: string;
+  firebase_uid: string;
+  email: string;
+  display_name: string;
+  locale: "en" | "hi";
+  role: string;
+  is_admin: boolean;
+  created_at: string;
+}
+
+interface LocalSubmissionRecord {
+  id: string;
+  user_id: string;
+  problem_id: string;
+  language: string;
+  status: string;
+  runtime_ms: number | null;
+  memory_kb: number | null;
+  source_code: string;
+  passed?: boolean;
+  created_at: string;
+}
+
+interface LocalProgressRecord {
+  user_id: string;
+  problem_id: string;
+  solved: boolean;
+  best_status: string;
+  attempts: number;
+  last_submission_at: string;
+}
+
+interface LocalSubscriptionRecord {
+  user_id: string;
+  plan_code: string;
+  status: string;
+  provider: string;
+  current_period_end: string | null;
+  created_at: string;
+}
+
+interface LocalStorageSchema {
+  users: LocalUserRecord[];
+  submissions: LocalSubmissionRecord[];
+  user_progress: LocalProgressRecord[];
+  subscriptions: LocalSubscriptionRecord[];
+}
+
+const getLocalStoragePath = () => {
+  const dir = path.resolve(process.cwd(), ".codeorbit-cache");
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return path.join(dir, "platform-storage.json");
+};
+
+const readLocalStorage = (): LocalStorageSchema => {
+  try {
+    const filePath = getLocalStoragePath();
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, "utf8");
+      return JSON.parse(raw) as LocalStorageSchema;
+    }
+  } catch (err) {
+    console.warn("Notice: could not read local platform storage:", err);
+  }
+  return {
+    users: [],
+    submissions: [],
+    user_progress: [],
+    subscriptions: [],
+  };
+};
+
+const writeLocalStorage = (data: LocalStorageSchema) => {
+  try {
+    const filePath = getLocalStoragePath();
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+  } catch (err) {
+    console.warn("Notice: could not write local platform storage:", err);
+  }
+};
+
+const ensureLocalUser = (viewer: ViewerContext, store: LocalStorageSchema): LocalUserRecord | null => {
+  if (!viewer.uid && !viewer.email) {
+    return null;
+  }
+  let user = store.users.find(
+    (u) => (viewer.uid && u.firebase_uid === viewer.uid) || (viewer.email && u.email === viewer.email)
+  );
+  if (!user) {
+    const defaultName =
+      viewer.displayName?.trim() ||
+      (viewer.email ? viewer.email.split("@")[0].replace(/[^a-zA-Z0-9-_ ]/g, "").trim() : "Developer") ||
+      "Developer";
+    user = {
+      id: randomUUID(),
+      firebase_uid: viewer.uid || `local-${randomUUID()}`,
+      email: (viewer.email || `${viewer.uid}@codeorbit.local`).toLowerCase(),
+      display_name: defaultName,
+      locale: "en",
+      role: "user",
+      is_admin: false,
+      created_at: new Date().toISOString(),
+    };
+    store.users.push(user);
+    writeLocalStorage(store);
+  }
+  return user;
+};
+
+export const getViewerContextFromHeaders = async (headers: Headers): Promise<ViewerContext> => {
   const authHeader = headers.get("authorization") ?? headers.get("Authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7).trim();
-    const payload = decodeJwtPayload(token);
+    const payload = await verifyFirebaseIdToken(token);
     if (payload && (payload.user_id || payload.sub)) {
       return {
         uid: String(payload.user_id || payload.sub),
@@ -357,15 +559,22 @@ export const getViewerContextFromHeaders = (headers: Headers): ViewerContext => 
         displayName: typeof payload.name === "string" ? payload.name : undefined,
       };
     }
+    // In production, an invalid Bearer token fails closed immediately
+    if (process.env.NODE_ENV === "production") {
+      return {};
+    }
   }
 
-  // In development only, allow header context fallback for testing
+  // In development only, allow explicit debug headers for local testing
   if (process.env.NODE_ENV === "development") {
-    return {
-      uid: headers.get("x-codeorbit-viewer-uid") ?? undefined,
-      email: headers.get("x-codeorbit-viewer-email") ?? undefined,
-      displayName: headers.get("x-codeorbit-viewer-name") ?? undefined,
-    };
+    const devUid = headers.get("x-codeorbit-viewer-uid");
+    if (devUid) {
+      return {
+        uid: devUid,
+        email: headers.get("x-codeorbit-viewer-email") ?? undefined,
+        displayName: headers.get("x-codeorbit-viewer-name") ?? undefined,
+      };
+    }
   }
 
   return {};
@@ -442,7 +651,32 @@ export const getProblemDetailData = async (problemId: string): Promise<ProblemDe
 
 export const getBillingSummaryData = async (viewer: ViewerContext): Promise<BillingSummary> => {
   if (!hasSupabase()) {
-    return freeBillingSummary;
+    if (!viewer.uid && !viewer.email) {
+      return freeBillingSummary;
+    }
+    const store = readLocalStorage();
+    const user = store.users.find(
+      (u) => (viewer.uid && u.firebase_uid === viewer.uid) || (viewer.email && u.email === viewer.email)
+    );
+    if (!user) {
+      return freeBillingSummary;
+    }
+
+    const activeSub = store.subscriptions.find(
+      (s) => s.user_id === user.id && s.status === "active"
+    );
+    if (!activeSub) {
+      return freeBillingSummary;
+    }
+
+    const planId = activeSub.plan_code === "premium-lifetime" ? "premium-lifetime" : "premium-monthly";
+    return {
+      planId,
+      planName: planId === "premium-lifetime" ? "Interview Sprint" : "Pro",
+      status: activeSub.status,
+      premiumActive: true,
+      validUntilIso: activeSub.current_period_end ?? null,
+    };
   }
 
   try {
@@ -481,7 +715,37 @@ export const getBillingSummaryData = async (viewer: ViewerContext): Promise<Bill
 
 export const getDashboardSummaryData = async (viewer: ViewerContext): Promise<DashboardSummary> => {
   if (!hasSupabase()) {
-    return emptyDashboardSummary;
+    if (!viewer.uid && !viewer.email) {
+      return emptyDashboardSummary;
+    }
+    const store = readLocalStorage();
+    const user = store.users.find(
+      (u) => (viewer.uid && u.firebase_uid === viewer.uid) || (viewer.email && u.email === viewer.email)
+    );
+    if (!user) {
+      return emptyDashboardSummary;
+    }
+
+    const solvedProblems = store.user_progress.filter((p) => p.user_id === user.id && p.solved);
+    const solvedCount = solvedProblems.length;
+
+    // Calculate streak from unique days of submission
+    const userSubmissions = store.submissions.filter((s) => s.user_id === user.id);
+    const submissionDays = new Set(userSubmissions.map((s) => s.created_at.slice(0, 10)));
+    const streak = Math.min(submissionDays.size, 14);
+
+    const hasActiveSub = store.subscriptions.some(
+      (s) => s.user_id === user.id && s.status === "active"
+    );
+
+    return {
+      streak: streak > 0 ? streak : (solvedCount > 0 ? 1 : 0),
+      solvedCount,
+      weakTopics: ["Arrays", "Strings", "Binary Search"],
+      recommendedTrack:
+        solvedCount >= 8 ? "Google Interview Sprint" : "TCS + Infosys Foundations",
+      premiumActive: hasActiveSub,
+    };
   }
 
   try {
@@ -559,7 +823,31 @@ export const getDashboardSummaryData = async (viewer: ViewerContext): Promise<Da
 
 export const getActivitySummaryData = async (viewer: ViewerContext): Promise<ActivitySummary> => {
   if (!hasSupabase()) {
-    return emptyActivitySummary;
+    if (!viewer.uid && !viewer.email) {
+      return emptyActivitySummary;
+    }
+    const store = readLocalStorage();
+    const user = store.users.find(
+      (u) => (viewer.uid && u.firebase_uid === viewer.uid) || (viewer.email && u.email === viewer.email)
+    );
+    if (!user) {
+      return emptyActivitySummary;
+    }
+
+    const userSubs = store.submissions.filter((s) => s.user_id === user.id).slice(0, 12);
+    return {
+      recentSubmissions: userSubs.map((s) => ({
+        id: s.id,
+        problemId: s.problem_id,
+        problemName: getProblemById(s.problem_id)?.problemName || s.problem_id,
+        language: s.language,
+        status: s.status,
+        submittedAtIso: s.created_at,
+      })),
+      pendingCount: userSubs.filter((s) => s.status === "PENDING").length,
+      acceptedCount: userSubs.filter((s) => s.status === "Accepted").length,
+      totalAttempts: userSubs.length,
+    };
   }
 
   try {
@@ -612,7 +900,48 @@ export const getActivitySummaryData = async (viewer: ViewerContext): Promise<Act
 
 export const getLeaderboardSummaryData = async (viewer?: ViewerContext): Promise<LeaderboardSummary> => {
   if (!hasSupabase()) {
-    return fallbackLeaderboardSummary;
+    const store = readLocalStorage();
+    const baseEntries = fallbackLeaderboardSummary.entries.map((entry) => ({ ...entry }));
+    let viewerRank: number | null = null;
+    let viewerSolvedCount = 0;
+
+    if (viewer?.uid || viewer?.email) {
+      const user = store.users.find(
+        (u) => (viewer.uid && u.firebase_uid === viewer.uid) || (viewer.email && u.email === viewer.email)
+      );
+      if (user) {
+        const solved = store.user_progress.filter((p) => p.user_id === user.id && p.solved).length;
+        viewerSolvedCount = solved;
+
+        const existingIdx = baseEntries.findIndex((e) => e.uid === user.firebase_uid);
+        if (existingIdx >= 0) {
+          baseEntries[existingIdx].solvedCount = Math.max(baseEntries[existingIdx].solvedCount, solved);
+        } else if (solved > 0) {
+          baseEntries.push({
+            uid: user.firebase_uid,
+            displayName: user.display_name,
+            solvedCount: solved,
+            streak: Math.min(solved, 7),
+            rank: 999,
+            premiumActive: store.subscriptions.some((s) => s.user_id === user.id && s.status === "active"),
+          });
+        }
+      }
+    }
+
+    baseEntries.sort((a, b) => b.solvedCount - a.solvedCount);
+    baseEntries.forEach((entry, idx) => {
+      entry.rank = idx + 1;
+      if (viewer?.uid && entry.uid === viewer.uid) {
+        viewerRank = entry.rank;
+      }
+    });
+
+    return {
+      entries: baseEntries.slice(0, 50),
+      viewerRank,
+      viewerSolvedCount,
+    };
   }
 
   try {
@@ -695,8 +1024,59 @@ export const recordSubmissionData = async (
     passed?: boolean | null;
   }
 ): Promise<{ id: string } | null> => {
+  const isSolved = payload.passed === true || payload.status === "Accepted";
+  const submissionId = randomUUID();
+  const nowIso = new Date().toISOString();
+
   if (!hasSupabase()) {
-    return null;
+    if (!viewer.uid && !viewer.email) {
+      return null;
+    }
+    const store = readLocalStorage();
+    const user = ensureLocalUser(viewer, store);
+    if (!user) {
+      return null;
+    }
+
+    store.submissions.unshift({
+      id: submissionId,
+      user_id: user.id,
+      problem_id: payload.problemId,
+      language: payload.language,
+      status: payload.status,
+      runtime_ms: typeof payload.runtimeMs === "number" ? Math.round(payload.runtimeMs) : null,
+      memory_kb: typeof payload.memoryKb === "number" ? Math.round(payload.memoryKb) : null,
+      source_code: payload.sourceCode,
+      passed: isSolved,
+      created_at: nowIso,
+    });
+
+    const existingProgressIndex = store.user_progress.findIndex(
+      (p) => p.user_id === user.id && p.problem_id === payload.problemId
+    );
+
+    if (existingProgressIndex >= 0) {
+      const prev = store.user_progress[existingProgressIndex];
+      store.user_progress[existingProgressIndex] = {
+        ...prev,
+        solved: prev.solved || isSolved,
+        best_status: prev.solved || isSolved ? "Accepted" : payload.status,
+        attempts: prev.attempts + 1,
+        last_submission_at: nowIso,
+      };
+    } else {
+      store.user_progress.push({
+        user_id: user.id,
+        problem_id: payload.problemId,
+        solved: isSolved,
+        best_status: isSolved ? "Accepted" : payload.status,
+        attempts: 1,
+        last_submission_at: nowIso,
+      });
+    }
+
+    writeLocalStorage(store);
+    return { id: submissionId };
   }
 
   try {
@@ -815,7 +1195,29 @@ export const getViewerProfileData = async (viewer: ViewerContext): Promise<UserP
   }
 
   if (!hasSupabase()) {
-    return buildViewerProfileData(viewer);
+    const store = readLocalStorage();
+    let user = store.users.find(
+      (u) => (viewer.uid && u.firebase_uid === viewer.uid) || (viewer.email && u.email === viewer.email)
+    );
+    if (!user) {
+      user = ensureLocalUser(viewer, store);
+    }
+    if (!user) {
+      return buildViewerProfileData(viewer);
+    }
+    return {
+      uid: user.firebase_uid,
+      email: user.email,
+      displayName: user.display_name,
+      isAdmin: Boolean(user.is_admin),
+      locale: user.locale === "hi" ? "hi" : "en",
+      role:
+        user.role === "admin" || user.role === "recruiter_beta" || user.role === "campus_beta"
+          ? user.role
+          : Boolean(user.is_admin)
+            ? "admin"
+            : "user",
+    };
   }
 
   try {
@@ -887,13 +1289,39 @@ export const bootstrapUserProfileData = async (
     "User";
 
   if (!hasSupabase()) {
+    const store = readLocalStorage();
+    let user = store.users.find(
+      (u) => (uid && u.firebase_uid === uid) || (email && u.email === email)
+    );
+    if (user) {
+      user.display_name = displayName;
+      user.email = email;
+    } else {
+      user = {
+        id: randomUUID(),
+        firebase_uid: uid,
+        email,
+        display_name: displayName,
+        locale: "en",
+        role: "user",
+        is_admin: false,
+        created_at: new Date().toISOString(),
+      };
+      store.users.push(user);
+    }
+    writeLocalStorage(store);
     return {
-      uid,
-      email,
-      displayName,
-      isAdmin: false,
-      locale: "en",
-      role: "user",
+      uid: user.firebase_uid,
+      email: user.email,
+      displayName: user.display_name,
+      isAdmin: Boolean(user.is_admin),
+      locale: user.locale === "hi" ? "hi" : "en",
+      role:
+        user.role === "admin" || user.role === "recruiter_beta" || user.role === "campus_beta"
+          ? user.role
+          : Boolean(user.is_admin)
+            ? "admin"
+            : "user",
     };
   }
 
@@ -1094,6 +1522,30 @@ export const verifyBillingPaymentData = async (
       }
     } catch (dbError) {
       console.warn("Failed to record subscription to Supabase:", dbError);
+    }
+  } else {
+    try {
+      const store = readLocalStorage();
+      const user = ensureLocalUser(viewer, store);
+      if (user) {
+        const existingIdx = store.subscriptions.findIndex((s) => s.user_id === user.id);
+        const subRecord: LocalSubscriptionRecord = {
+          user_id: user.id,
+          plan_code: planId,
+          status: "active",
+          provider: "razorpay",
+          current_period_end: validUntilIso,
+          created_at: now.toISOString(),
+        };
+        if (existingIdx >= 0) {
+          store.subscriptions[existingIdx] = subRecord;
+        } else {
+          store.subscriptions.push(subRecord);
+        }
+        writeLocalStorage(store);
+      }
+    } catch (localErr) {
+      console.warn("Failed to record subscription to local store:", localErr);
     }
   }
 

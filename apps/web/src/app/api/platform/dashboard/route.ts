@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const summary = await getDashboardSummaryData(getViewerContextFromHeaders(request.headers));
+  const viewer = await getViewerContextFromHeaders(request.headers);
+  const summary = await getDashboardSummaryData(viewer);
   return NextResponse.json({ summary });
 }

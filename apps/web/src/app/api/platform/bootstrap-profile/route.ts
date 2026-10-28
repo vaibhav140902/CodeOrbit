@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const input = bootstrapProfileInputSchema.parse(await request.json());
-    const viewer = getViewerContextFromHeaders(request.headers);
+    const viewer = await getViewerContextFromHeaders(request.headers);
     const profile = await bootstrapUserProfileData(viewer, input);
 
     if (!profile) {
