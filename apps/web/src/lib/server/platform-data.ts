@@ -477,11 +477,24 @@ interface LocalSubscriptionRecord {
   created_at: string;
 }
 
+interface LocalPaymentRecord {
+  id: string;
+  user_id: string;
+  provider_order_id: string;
+  provider_payment_id: string;
+  amount_paise: number;
+  currency: string;
+  status: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
 interface LocalStorageSchema {
   users: LocalUserRecord[];
   submissions: LocalSubmissionRecord[];
   user_progress: LocalProgressRecord[];
   subscriptions: LocalSubscriptionRecord[];
+  payments: LocalPaymentRecord[];
 }
 
 const getLocalStoragePath = () => {
@@ -497,7 +510,14 @@ const readLocalStorage = (): LocalStorageSchema => {
     const filePath = getLocalStoragePath();
     if (fs.existsSync(filePath)) {
       const raw = fs.readFileSync(filePath, "utf8");
-      return JSON.parse(raw) as LocalStorageSchema;
+      const parsed = JSON.parse(raw) as Partial<LocalStorageSchema>;
+      return {
+        users: parsed.users ?? [],
+        submissions: parsed.submissions ?? [],
+        user_progress: parsed.user_progress ?? [],
+        subscriptions: parsed.subscriptions ?? [],
+        payments: parsed.payments ?? [],
+      };
     }
   } catch (err) {
     console.warn("Notice: could not read local platform storage:", err);
@@ -507,6 +527,7 @@ const readLocalStorage = (): LocalStorageSchema => {
     submissions: [],
     user_progress: [],
     subscriptions: [],
+    payments: [],
   };
 };
 
@@ -1449,6 +1470,167 @@ export const createBillingOrderData = async (
   };
 };
 
+export const processSuccessfulPaymentData = async (input: {
+  orderId: string;
+  paymentId: string;
+  planId?: PaidBillingPlanId;
+  amountPaise?: number;
+  currency?: string;
+  viewer?: ViewerContext;
+  uid?: string;
+  email?: string;
+  displayName?: string;
+  method?: string;
+  signature?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<{ status: "active"; planId: PaidBillingPlanId; validUntil: string }> => {
+  const planId: PaidBillingPlanId = input.planId || "premium-monthly";
+  const plan = BILLING_PLANS_MAP[planId] ?? BILLING_PLANS_MAP["premium-monthly"];
+  const now = new Date();
+  const validUntil = new Date(now.getTime() + plan.validityDays * 24 * 60 * 60 * 1000);
+  const validUntilIso = validUntil.toISOString();
+  const amountPaise = input.amountPaise || plan.amountPaise;
+  const currency = input.currency || "INR";
+
+  const targetViewer: ViewerContext = {
+    uid: input.viewer?.uid || input.uid,
+    email: input.viewer?.email || input.email,
+    displayName: input.viewer?.displayName || input.displayName,
+  };
+
+  if (!targetViewer.uid && !targetViewer.email) {
+    throw new Error("Target user context missing for payment processing.");
+  }
+
+  if (hasSupabase()) {
+    try {
+      let user = await loadUserRow(targetViewer);
+      if (!user && targetViewer.uid && targetViewer.email) {
+        const insertRes = await requestSupabase<SupabaseUserRow[]>("users", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+          body: {
+            firebase_uid: targetViewer.uid,
+            email: targetViewer.email.toLowerCase(),
+            display_name: targetViewer.displayName || targetViewer.email.split("@")[0] || "User",
+            locale: "en",
+            role: "user",
+            is_admin: false,
+          },
+        });
+        user = normalizeSingle(insertRes.data);
+      }
+
+      if (user) {
+        // Idempotency check: see if payment was already recorded
+        const existingPaymentRes = await requestSupabase<{ id: string }[]>("payments", {
+          params: {
+            select: "id",
+            provider_order_id: `eq.${input.orderId}`,
+            limit: 1,
+          },
+        }).catch(() => ({ data: null }));
+
+        const alreadyRecorded = Boolean(normalizeSingle(existingPaymentRes.data));
+
+        if (!alreadyRecorded) {
+          await requestSupabase("payments", {
+            method: "POST",
+            headers: { Prefer: "return=minimal" },
+            body: {
+              user_id: user.id,
+              provider_order_id: input.orderId,
+              provider_payment_id: input.paymentId,
+              amount_paise: amountPaise,
+              currency,
+              status: "captured",
+              metadata: {
+                signature: input.signature,
+                method: input.method,
+                planId,
+                planName: plan.name,
+                ...input.metadata,
+              },
+              created_at: now.toISOString(),
+            },
+          }).catch((err) => {
+            console.warn("Payment insert warning:", err);
+          });
+        }
+
+        // Upsert active subscription
+        await requestSupabase("subscriptions", {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: {
+            user_id: user.id,
+            plan_code: planId,
+            status: "active",
+            provider: "razorpay",
+            current_period_end: validUntilIso,
+            created_at: now.toISOString(),
+          },
+        });
+      }
+    } catch (dbError) {
+      console.warn("Failed to record subscription to Supabase:", dbError);
+    }
+  } else {
+    try {
+      const store = readLocalStorage();
+      const user = ensureLocalUser(targetViewer, store);
+      if (user) {
+        const existingPay = store.payments.find(
+          (p) => p.provider_order_id === input.orderId || p.provider_payment_id === input.paymentId
+        );
+        if (!existingPay) {
+          store.payments.push({
+            id: randomUUID(),
+            user_id: user.id,
+            provider_order_id: input.orderId,
+            provider_payment_id: input.paymentId,
+            amount_paise: amountPaise,
+            currency,
+            status: "captured",
+            metadata: {
+              signature: input.signature,
+              method: input.method,
+              planId,
+              planName: plan.name,
+              ...input.metadata,
+            },
+            created_at: now.toISOString(),
+          });
+        }
+
+        const existingIdx = store.subscriptions.findIndex((s) => s.user_id === user.id);
+        const subRecord: LocalSubscriptionRecord = {
+          user_id: user.id,
+          plan_code: planId,
+          status: "active",
+          provider: "razorpay",
+          current_period_end: validUntilIso,
+          created_at: now.toISOString(),
+        };
+        if (existingIdx >= 0) {
+          store.subscriptions[existingIdx] = subRecord;
+        } else {
+          store.subscriptions.push(subRecord);
+        }
+        writeLocalStorage(store);
+      }
+    } catch (localErr) {
+      console.warn("Failed to record subscription to local store:", localErr);
+    }
+  }
+
+  return {
+    status: "active",
+    planId,
+    validUntil: validUntilIso,
+  };
+};
+
 export const verifyBillingPaymentData = async (
   viewer: ViewerContext,
   input: {
@@ -1476,84 +1658,13 @@ export const verifyBillingPaymentData = async (
     throw new Error("Invalid cryptographic payment signature.");
   }
 
-  const planId: PaidBillingPlanId = input.planId || "premium-monthly";
-  const plan = BILLING_PLANS_MAP[planId] ?? BILLING_PLANS_MAP["premium-monthly"];
-  const now = new Date();
-  const validUntil = new Date(now.getTime() + plan.validityDays * 24 * 60 * 60 * 1000);
-  const validUntilIso = validUntil.toISOString();
-
-  if (hasSupabase()) {
-    try {
-      const user = await loadUserRow(viewer);
-      if (user) {
-        await requestSupabase("subscriptions", {
-          method: "POST",
-          headers: { Prefer: "return=minimal" },
-          body: {
-            user_id: user.id,
-            plan_code: planId,
-            status: "active",
-            provider: "razorpay",
-            current_period_end: validUntilIso,
-            created_at: now.toISOString(),
-          },
-        });
-
-        await requestSupabase("payments", {
-          method: "POST",
-          headers: { Prefer: "return=minimal" },
-          body: {
-            user_id: user.id,
-            provider_order_id: input.orderId,
-            provider_payment_id: input.paymentId,
-            amount_paise: plan.amountPaise,
-            currency: "INR",
-            status: "captured",
-            metadata: {
-              signature: input.signature,
-              planId,
-              planName: plan.name,
-            },
-            created_at: now.toISOString(),
-          },
-        }).catch((err) => {
-          console.warn("Payment insert warning:", err);
-        });
-      }
-    } catch (dbError) {
-      console.warn("Failed to record subscription to Supabase:", dbError);
-    }
-  } else {
-    try {
-      const store = readLocalStorage();
-      const user = ensureLocalUser(viewer, store);
-      if (user) {
-        const existingIdx = store.subscriptions.findIndex((s) => s.user_id === user.id);
-        const subRecord: LocalSubscriptionRecord = {
-          user_id: user.id,
-          plan_code: planId,
-          status: "active",
-          provider: "razorpay",
-          current_period_end: validUntilIso,
-          created_at: now.toISOString(),
-        };
-        if (existingIdx >= 0) {
-          store.subscriptions[existingIdx] = subRecord;
-        } else {
-          store.subscriptions.push(subRecord);
-        }
-        writeLocalStorage(store);
-      }
-    } catch (localErr) {
-      console.warn("Failed to record subscription to local store:", localErr);
-    }
-  }
-
-  return {
-    status: "active",
-    planId,
-    validUntil: validUntilIso,
-  };
+  return processSuccessfulPaymentData({
+    orderId: input.orderId,
+    paymentId: input.paymentId,
+    planId: input.planId,
+    viewer,
+    signature: input.signature,
+  });
 };
 
 export const recordInterviewSessionData = async (

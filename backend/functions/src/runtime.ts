@@ -2009,6 +2009,7 @@ export const verifyBillingPaymentHandler = (async (request: any) => {
   return result;
 });
 
+// NOTE: Authoritative webhook processing is consolidated into Next.js App Router: /api/platform/billing/webhook
 export const razorpayWebhookHandler = (async (request: any, response: any) => {
   setJsonSecurityHeaders(response);
 
