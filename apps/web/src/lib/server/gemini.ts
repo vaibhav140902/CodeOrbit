@@ -1,4 +1,5 @@
 import { ZodType } from "zod";
+import { acquireGeminiQuota, fetchWithTimeout, getGeminiQuotaInfo } from "@/lib/server/ai-shield";
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const FALLBACK_GEMINI_MODELS = ["gemini-2.0-flash"];
@@ -65,53 +66,74 @@ const callGemini = async ({
   const models = Array.from(new Set([model, DEFAULT_GEMINI_MODEL, ...FALLBACK_GEMINI_MODELS]));
   let lastError: Error | null = null;
 
+  // Protect global 15 RPM free tier ceiling:
+  if (!acquireGeminiQuota()) {
+    const quota = getGeminiQuotaInfo();
+    throw new Error(
+      `Gemini rate limit shield active (${quota.used}/${quota.maxLimit} RPM used). Resets in ${Math.ceil(
+        quota.resetInMs / 1000
+      )}s.`
+    );
+  }
+
   for (const currentModel of models) {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
       currentModel
     )}:generateContent`;
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: sanitizeFreeformText(systemPrompt, 8_000) }],
-          },
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: sanitizeFreeformText(userPrompt, 30_000) }],
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const response = await fetchWithTimeout(
+          endpoint,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
             },
-          ],
-          generationConfig: {
-            temperature: 0.4,
-            responseMimeType,
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: sanitizeFreeformText(systemPrompt, 8_000) }],
+              },
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: sanitizeFreeformText(userPrompt, 30_000) }],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.4,
+                responseMimeType,
+              },
+            }),
           },
-        }),
-      });
+          7_500
+        );
 
-      if (response.ok) {
-        const payload = (await response.json()) as unknown;
-        const text = extractResponseText(payload);
-        if (!text) {
-          throw new Error("Gemini returned an empty response.");
+        if (response.ok) {
+          const payload = (await response.json()) as unknown;
+          const text = extractResponseText(payload);
+          if (!text) {
+            throw new Error("Gemini returned an empty response.");
+          }
+
+          return text;
         }
 
-        return text;
+        const body = await response.text();
+        lastError = new Error(`Gemini request failed with ${response.status}: ${body.slice(0, 300)}`);
+
+        if (response.status !== 429 && response.status !== 503) {
+          throw lastError;
+        }
+
+        await delay(500 * (attempt + 1));
+      } catch (err) {
+        lastError = err as Error;
+        if ((err as Error).message.includes("timed out")) {
+          break;
+        }
       }
-
-      const body = await response.text();
-      lastError = new Error(`Gemini request failed with ${response.status}: ${body.slice(0, 300)}`);
-
-      if (response.status !== 429 && response.status !== 503) {
-        throw lastError;
-      }
-
-      await delay(500 * (attempt + 1));
     }
   }
 

@@ -1217,7 +1217,7 @@ export const getViewerProfileData = async (viewer: ViewerContext): Promise<UserP
 
   if (!hasSupabase()) {
     const store = readLocalStorage();
-    let user = store.users.find(
+    let user: LocalUserRecord | null | undefined = store.users.find(
       (u) => (viewer.uid && u.firebase_uid === viewer.uid) || (viewer.email && u.email === viewer.email)
     );
     if (!user) {
