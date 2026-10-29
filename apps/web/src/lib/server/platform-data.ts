@@ -1398,8 +1398,16 @@ export const updateViewerPreferencesData = (input: {
   privacyConsentAcceptedAtIso: input.privacyConsentAccepted ? new Date().toISOString() : null,
 });
 
-const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "rzp_test_SSbURnPNWloMSA").trim();
-const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "2P2juOCrkewylBrojMmVBXws").trim();
+const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID ?? "").trim();
+const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET ?? "").trim();
+
+const ensureRazorpayConfigured = () => {
+  if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+    throw new Error(
+      "Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in the web app environment."
+    );
+  }
+};
 
 const BILLING_PLANS_MAP: Record<
   PaidBillingPlanId,
@@ -1429,6 +1437,8 @@ export const createBillingOrderData = async (
   if (!plan) {
     throw new Error(`Invalid plan id: ${planId}`);
   }
+
+  ensureRazorpayConfigured();
 
   const authHeader = `Basic ${Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64")}`;
   const receipt = `${viewer.uid.slice(0, 8)}-${Date.now()}`;
@@ -1643,6 +1653,8 @@ export const verifyBillingPaymentData = async (
   if (!viewer.uid || !viewer.email) {
     throw new Error("Sign in required to verify payment.");
   }
+
+  ensureRazorpayConfigured();
 
   const digest = createHmac("sha256", RAZORPAY_KEY_SECRET)
     .update(`${input.orderId}|${input.paymentId}`)

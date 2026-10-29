@@ -6,12 +6,15 @@ import { type PaidBillingPlanId } from "@codeorbit/schema";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const RAZORPAY_WEBHOOK_SECRET = (
-  process.env.RAZORPAY_WEBHOOK_SECRET || "codeorbit2026vaibhavsecurewebhook12345"
-).trim();
+const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET ?? "").trim();
 
 export async function POST(request: NextRequest) {
   try {
+    if (!RAZORPAY_WEBHOOK_SECRET) {
+      console.error("Razorpay webhook rejected because RAZORPAY_WEBHOOK_SECRET is not configured.");
+      return NextResponse.json({ message: "Razorpay webhook is not configured." }, { status: 503 });
+    }
+
     const signature = request.headers.get("x-razorpay-signature") || "";
     if (!signature) {
       return NextResponse.json({ message: "Missing Razorpay webhook signature." }, { status: 400 });
