@@ -74,6 +74,7 @@ dist/
 .env
 .env.*
 !**/.env.example
+!**/.env.production.example
 frontend/src/admin-scripts/ServiceAccountkey.json
 **/serviceAccount*.json
 **/service-account*.json

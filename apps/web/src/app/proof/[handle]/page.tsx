@@ -24,10 +24,16 @@ export async function generateMetadata({
     });
   }
 
+  const ogParamTitle = encodeURIComponent(profile.fullName);
+  const ogParamSubtitle = encodeURIComponent(profile.headline || "Verified Developer");
+  const ogParamScore = encodeURIComponent(String(profile.readiness.overallScore || 85));
+  const ogImage = `/api/og?title=${ogParamTitle}&subtitle=${ogParamSubtitle}&score=${ogParamScore}&badge=VERIFIED%20PROOF`;
+
   return buildMetadata({
     title: `${profile.fullName} | Proof profile`,
     description: `${profile.fullName} uses CodeOrbit to show verified readiness, top topics, projects, and application intent.`,
     path: `/proof/${profile.handle}`,
+    image: ogImage,
   });
 }
 

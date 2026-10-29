@@ -135,7 +135,7 @@ const fallbackLeaderboardSummary: LeaderboardSummary = {
   viewerSolvedCount: 0,
 };
 
-const hasSupabase = () => Boolean(SUPABASE_REST_URL && SUPABASE_SERVICE_ROLE_KEY);
+export const hasSupabase = () => Boolean(SUPABASE_REST_URL && SUPABASE_SERVICE_ROLE_KEY);
 
 const normalizeSingle = <T>(value: T[] | T | null): T | null => {
   if (Array.isArray(value)) {
