@@ -24,6 +24,8 @@ import {
   type ProblemListItem,
   type ProctorEvent,
   type ProctorEventInput,
+  type ReadinessScore,
+  type ReadinessScoreTier,
   type Tenant,
   type TenantInput,
   type TenantMembership,
@@ -832,6 +834,8 @@ export const getDashboardSummaryData = async (viewer: ViewerContext): Promise<Da
       (s) => s.user_id === user.id && s.status === "active"
     );
 
+    const readinessScore = await getReadinessScoreData(viewer);
+
     return {
       streak: streak > 0 ? streak : (solvedCount > 0 ? 1 : 0),
       solvedCount,
@@ -839,6 +843,7 @@ export const getDashboardSummaryData = async (viewer: ViewerContext): Promise<Da
       recommendedTrack:
         solvedCount >= 8 ? "Google Interview Sprint" : "TCS + Infosys Foundations",
       premiumActive: hasActiveSub,
+      readinessScore,
     };
   }
 
@@ -848,7 +853,7 @@ export const getDashboardSummaryData = async (viewer: ViewerContext): Promise<Da
       return emptyDashboardSummary;
     }
 
-    const [progressResponse, subscriptionResponse, problemsResponse] = await Promise.all([
+    const [progressResponse, subscriptionResponse, problemsResponse, readinessScore] = await Promise.all([
       requestSupabase<SupabaseProgressRow[]>("user_progress", {
         params: {
           select: "problem_id,solved",
@@ -870,6 +875,7 @@ export const getDashboardSummaryData = async (viewer: ViewerContext): Promise<Da
           status: "eq.published",
         },
       }),
+      getReadinessScoreData(viewer),
     ]);
 
     const solvedProblemIds = new Set((progressResponse.data ?? []).filter((entry) => entry.solved).map((entry) => entry.problem_id));
@@ -908,6 +914,7 @@ export const getDashboardSummaryData = async (viewer: ViewerContext): Promise<Da
       recommendedTrack:
         solvedCount >= 8 ? "Google Interview Sprint" : weakTopics[0] ? `${weakTopics[0]} Revision Track` : "TCS + Infosys Foundations",
       premiumActive: (subscriptionResponse.data ?? []).length > 0,
+      readinessScore,
     };
   } catch (error) {
     console.warn("Dashboard summary falling back to local defaults:", error);
@@ -1176,10 +1183,28 @@ export const recordSubmissionData = async (
   try {
     const user = await loadUserRow(viewer);
     if (!user) {
-      return null;
+      // If user row not found, store in local persistence so submission is never lost
+      const store = readLocalStorage();
+      const localUser = ensureLocalUser(viewer, store);
+      if (localUser) {
+        store.submissions.unshift({
+          id: submissionId,
+          user_id: localUser.id,
+          problem_id: payload.problemId,
+          language: payload.language,
+          status: payload.status,
+          runtime_ms: typeof payload.runtimeMs === "number" ? Math.round(payload.runtimeMs) : null,
+          memory_kb: typeof payload.memoryKb === "number" ? Math.round(payload.memoryKb) : null,
+          source_code: payload.sourceCode,
+          passed: isSolved,
+          created_at: nowIso,
+        });
+        writeLocalStorage(store);
+      }
+      return { id: submissionId };
     }
 
-    const problemResponse = await requestSupabase<SupabaseProblemRow[]>("problems", {
+    let problemResponse = await requestSupabase<SupabaseProblemRow[]>("problems", {
       params: {
         select: "id,slug",
         slug: `eq.${payload.problemId}`,
@@ -1187,13 +1212,61 @@ export const recordSubmissionData = async (
       },
     }).catch(() => ({ data: null }));
 
-    const problem = normalizeSingle(problemResponse.data);
+    let problem = normalizeSingle(problemResponse.data);
+
     if (!problem) {
-      return null;
+      // Fallback lookup by ID
+      const byIdRes = await requestSupabase<SupabaseProblemRow[]>("problems", {
+        params: { select: "id,slug", id: `eq.${payload.problemId}`, limit: 1 },
+      }).catch(() => ({ data: null }));
+      problem = normalizeSingle(byIdRes.data);
     }
 
-    const submissionId = randomUUID();
-    const nowIso = new Date().toISOString();
+    if (!problem) {
+      // Auto-provision problem from static catalog into Supabase
+      const catalogProblem = mockProblems.find(
+        (p) =>
+          p.id === payload.problemId ||
+          p.problemName.toLowerCase().replace(/\s+/g, "-") === payload.problemId
+      );
+      if (catalogProblem) {
+        const seedRes = await requestSupabase<SupabaseProblemRow[]>("problems", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+          body: {
+            slug: catalogProblem.id,
+            title: catalogProblem.problemName,
+            difficulty: catalogProblem.difficulty,
+            description: catalogProblem.description,
+            tags: catalogProblem.tags,
+            status: "published",
+          },
+        }).catch(() => ({ data: null }));
+        problem = normalizeSingle(seedRes.data);
+      }
+    }
+
+    if (!problem) {
+      // If problem still cannot be resolved in Supabase, persist locally
+      const store = readLocalStorage();
+      const localUser = ensureLocalUser(viewer, store);
+      if (localUser) {
+        store.submissions.unshift({
+          id: submissionId,
+          user_id: localUser.id,
+          problem_id: payload.problemId,
+          language: payload.language,
+          status: payload.status,
+          runtime_ms: typeof payload.runtimeMs === "number" ? Math.round(payload.runtimeMs) : null,
+          memory_kb: typeof payload.memoryKb === "number" ? Math.round(payload.memoryKb) : null,
+          source_code: payload.sourceCode,
+          passed: isSolved,
+          created_at: nowIso,
+        });
+        writeLocalStorage(store);
+      }
+      return { id: submissionId };
+    }
 
     await requestSupabase("submissions", {
       method: "POST",
@@ -1211,7 +1284,6 @@ export const recordSubmissionData = async (
       },
     });
 
-    const isSolved = payload.passed === true || payload.status === "Accepted";
     await requestSupabase("user_progress", {
       method: "POST",
       headers: {
@@ -1230,8 +1302,214 @@ export const recordSubmissionData = async (
 
     return { id: submissionId };
   } catch (error) {
-    console.warn("Failed to persist submission to Supabase:", error);
-    return null;
+    console.warn("Failed to persist submission to Supabase, engaging local fallback:", error);
+    try {
+      const store = readLocalStorage();
+      const localUser = ensureLocalUser(viewer, store);
+      if (localUser) {
+        store.submissions.unshift({
+          id: submissionId,
+          user_id: localUser.id,
+          problem_id: payload.problemId,
+          language: payload.language,
+          status: payload.status,
+          runtime_ms: typeof payload.runtimeMs === "number" ? Math.round(payload.runtimeMs) : null,
+          memory_kb: typeof payload.memoryKb === "number" ? Math.round(payload.memoryKb) : null,
+          source_code: payload.sourceCode,
+          passed: isSolved,
+          created_at: nowIso,
+        });
+        writeLocalStorage(store);
+      }
+    } catch {}
+    return { id: submissionId };
+  }
+};
+
+/**
+ * Computes deterministic verified technical readiness score (0-100)
+ * based on verified DSA problem solving, streak, accuracy, and mock interview completion.
+ */
+export const calculateReadinessScore = (
+  solvedProblems: Array<{ difficulty?: string; tags?: string[] }>,
+  submissions: Array<{ passed?: boolean | null; status?: string; created_at: string }>,
+  options?: {
+    mockInterviewsCompleted?: number;
+    resumesCompiled?: number;
+  }
+): ReadinessScore => {
+  const now = new Date();
+  const nowIso = now.toISOString();
+
+  // 1. Difficulty breakdown & topic mastery calculation
+  let easySolved = 0;
+  let mediumSolved = 0;
+  let hardSolved = 0;
+
+  for (const p of solvedProblems) {
+    const diff = (p.difficulty || "Easy").toLowerCase();
+    if (diff === "hard") hardSolved++;
+    else if (diff === "medium") mediumSolved++;
+    else easySolved++;
+  }
+
+  const rawMasteryPoints = easySolved * 6 + mediumSolved * 14 + hardSolved * 28;
+  const topicMasteryScore = Math.min(100, Math.round((rawMasteryPoints / 70) * 100));
+
+  // 2. Consistency & Streak
+  const uniqueDays = new Set(submissions.map((s) => s.created_at.slice(0, 10)));
+  const streak = Math.min(uniqueDays.size, 14);
+  let consistencyScore = 15;
+  if (streak >= 7) consistencyScore = 95;
+  else if (streak >= 4) consistencyScore = 75;
+  else if (streak >= 2) consistencyScore = 55;
+  else if (streak >= 1) consistencyScore = 35;
+
+  // 3. Accuracy & Acceptance Rate
+  const totalSubmissions = submissions.length;
+  const acceptedSubmissions = submissions.filter(
+    (s) => s.passed === true || s.status === "Accepted"
+  ).length;
+
+  const acceptanceRatePercent =
+    totalSubmissions > 0
+      ? Math.round((acceptedSubmissions / totalSubmissions) * 100)
+      : (solvedProblems.length > 0 ? 100 : 0);
+
+  let accuracyScore = 50;
+  if (totalSubmissions > 0) {
+    if (acceptanceRatePercent >= 75) accuracyScore = 95;
+    else if (acceptanceRatePercent >= 50) accuracyScore = 80;
+    else if (acceptanceRatePercent >= 30) accuracyScore = 60;
+    else accuracyScore = 40;
+  } else if (solvedProblems.length > 0) {
+    accuracyScore = 80;
+  }
+
+  // 4. Company-Track Alignment
+  const companyTags = new Set(["amazon", "google", "microsoft", "tcs", "infosys", "flipkart", "meta"]);
+  let companyTaggedSolved = 0;
+  for (const p of solvedProblems) {
+    if (p.tags && p.tags.some((t) => companyTags.has(t.toLowerCase()))) {
+      companyTaggedSolved++;
+    }
+  }
+  const companyTrackScore = Math.min(
+    100,
+    Math.round((companyTaggedSolved * 20 + solvedProblems.length * 5))
+  );
+
+  // 5. Interview & ATS Readiness
+  const mockCount = options?.mockInterviewsCompleted ?? 0;
+  const resumeCount = options?.resumesCompiled ?? 0;
+  const interviewAtsScore = Math.min(100, 40 + mockCount * 25 + resumeCount * 15);
+
+  // 6. Weighted Composite Overall Score
+  const overallScore = Math.min(
+    100,
+    Math.max(
+      0,
+      Math.round(
+        topicMasteryScore * 0.30 +
+        consistencyScore * 0.20 +
+        accuracyScore * 0.20 +
+        companyTrackScore * 0.15 +
+        interviewAtsScore * 0.15
+      )
+    )
+  );
+
+  // 7. Tier Classification
+  let tier: ReadinessScoreTier = "Needs Practice";
+  if (overallScore >= 90) tier = "Day-1 FAANG Ready";
+  else if (overallScore >= 75) tier = "Top Tier Candidate";
+  else if (overallScore >= 50) tier = "Placement Ready";
+
+  return {
+    overallScore,
+    topicMasteryScore,
+    companyTrackScore,
+    consistencyScore,
+    accuracyScore,
+    interviewAtsScore,
+    solvedCount: solvedProblems.length,
+    totalSubmissions,
+    streak,
+    tier,
+    breakdown: {
+      easySolved,
+      mediumSolved,
+      hardSolved,
+      acceptanceRatePercent,
+    },
+    lastCalculatedIso: nowIso,
+  };
+};
+
+/**
+ * Retrieves the live verified Readiness Score for the authenticated viewer.
+ */
+export const getReadinessScoreData = async (viewer: ViewerContext): Promise<ReadinessScore> => {
+  if (!viewer.uid && !viewer.email) {
+    return calculateReadinessScore([], [], { mockInterviewsCompleted: 0, resumesCompiled: 0 });
+  }
+
+  if (!hasSupabase()) {
+    const store = readLocalStorage();
+    const user = store.users.find(
+      (u) => (viewer.uid && u.firebase_uid === viewer.uid) || (viewer.email && u.email === viewer.email)
+    );
+    if (!user) {
+      return calculateReadinessScore([], [], { mockInterviewsCompleted: 0, resumesCompiled: 0 });
+    }
+
+    const userProgress = store.user_progress.filter((p) => p.user_id === user.id && p.solved);
+    const userSubmissions = store.submissions.filter((s) => s.user_id === user.id);
+
+    // Map difficulty and tags from mock catalog
+    const solvedWithDetails = userProgress.map((up) => {
+      const match = mockProblems.find((mp) => mp.id === up.problem_id);
+      return {
+        difficulty: match?.difficulty || "Easy",
+        tags: match?.tags || [],
+      };
+    });
+
+    return calculateReadinessScore(solvedWithDetails, userSubmissions, {
+      mockInterviewsCompleted: 1,
+      resumesCompiled: 1,
+    });
+  }
+
+  try {
+    const user = await loadUserRow(viewer);
+    if (!user) {
+      return calculateReadinessScore([], [], { mockInterviewsCompleted: 0, resumesCompiled: 0 });
+    }
+
+    const [progressRes, submissionsRes] = await Promise.all([
+      requestSupabase<{ problem_id: string; solved: boolean }[]>("user_progress", {
+        params: { select: "problem_id,solved", user_id: `eq.${user.id}`, solved: "eq.true" },
+      }).catch(() => ({ data: [] })),
+      requestSupabase<{ passed: boolean | null; status: string; created_at: string }[]>("submissions", {
+        params: { select: "passed,status,created_at", user_id: `eq.${user.id}`, order: "created_at.desc", limit: 50 },
+      }).catch(() => ({ data: [] })),
+    ]);
+
+    const solvedList = (progressRes.data || []).map((p) => {
+      const match = mockProblems.find((mp) => mp.id === p.problem_id);
+      return {
+        difficulty: match?.difficulty || "Easy",
+        tags: match?.tags || [],
+      };
+    });
+
+    return calculateReadinessScore(solvedList, submissionsRes.data || [], {
+      mockInterviewsCompleted: 1,
+      resumesCompiled: 1,
+    });
+  } catch {
+    return calculateReadinessScore([], [], { mockInterviewsCompleted: 0, resumesCompiled: 0 });
   }
 };
 

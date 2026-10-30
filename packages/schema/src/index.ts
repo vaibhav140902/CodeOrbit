@@ -34,12 +34,42 @@ export const userProfileSchema = z.object({
   createdAtIso: z.string().datetime().optional(),
 });
 
+export const readinessScoreTierSchema = z.enum([
+  "Needs Practice",
+  "Placement Ready",
+  "Top Tier Candidate",
+  "Day-1 FAANG Ready",
+]);
+
+export const readinessScoreBreakdownSchema = z.object({
+  easySolved: z.number().int().nonnegative(),
+  mediumSolved: z.number().int().nonnegative(),
+  hardSolved: z.number().int().nonnegative(),
+  acceptanceRatePercent: z.number().min(0).max(100),
+});
+
+export const readinessScoreSchema = z.object({
+  overallScore: z.number().int().min(0).max(100),
+  topicMasteryScore: z.number().int().min(0).max(100),
+  companyTrackScore: z.number().int().min(0).max(100),
+  consistencyScore: z.number().int().min(0).max(100),
+  accuracyScore: z.number().int().min(0).max(100),
+  interviewAtsScore: z.number().int().min(0).max(100),
+  solvedCount: z.number().int().nonnegative(),
+  totalSubmissions: z.number().int().nonnegative(),
+  streak: z.number().int().nonnegative(),
+  tier: readinessScoreTierSchema,
+  breakdown: readinessScoreBreakdownSchema,
+  lastCalculatedIso: z.string().datetime(),
+});
+
 export const dashboardSummarySchema = z.object({
   streak: z.number().int().nonnegative(),
   solvedCount: z.number().int().nonnegative(),
   weakTopics: z.array(z.string().min(1)),
   recommendedTrack: z.string().min(1),
   premiumActive: z.boolean(),
+  readinessScore: readinessScoreSchema.optional(),
 });
 
 export const leaderboardEntrySchema = z.object({
@@ -706,6 +736,9 @@ export type WorkspaceRole = z.infer<typeof workspaceRoleSchema>;
 export type ProblemListItem = z.infer<typeof problemListItemSchema>;
 export type ProblemDetail = z.infer<typeof problemDetailSchema>;
 export type UserProfile = z.infer<typeof userProfileSchema>;
+export type ReadinessScoreTier = z.infer<typeof readinessScoreTierSchema>;
+export type ReadinessScoreBreakdown = z.infer<typeof readinessScoreBreakdownSchema>;
+export type ReadinessScore = z.infer<typeof readinessScoreSchema>;
 export type DashboardSummary = z.infer<typeof dashboardSummarySchema>;
 export type LeaderboardEntry = z.infer<typeof leaderboardEntrySchema>;
 export type LeaderboardSummary = z.infer<typeof leaderboardSummarySchema>;
