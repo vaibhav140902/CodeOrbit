@@ -17,6 +17,8 @@ import {
   mockInterviewInputSchema,
   mockInterviewLiveResponseSchema,
   mockInterviewResponseSchema,
+  mockInterviewTurnInputSchema,
+  mockInterviewTurnResponseSchema,
   recruiterBetaWorkspaceSchema,
   recruiterCandidateReviewSchema,
   paidBillingPlanIdSchema,
@@ -48,6 +50,8 @@ import {
   type MockInterviewInput,
   type MockInterviewLiveResponse,
   type MockInterviewResponse,
+  type MockInterviewTurnInput,
+  type MockInterviewTurnResponse,
   type RecruiterBetaWorkspace,
   type RecruiterCandidateReview,
   type PaidBillingPlanId,
@@ -281,6 +285,10 @@ export const platformApi = {
   async generateLiveMockInterviewFeedback(input: MockInterviewInput): Promise<MockInterviewLiveResponse> {
     const payload = mockInterviewInputSchema.parse(input);
     return postJson("/api/ai/mock-interview/live", payload, mockInterviewLiveResponseSchema);
+  },
+  async sendMockInterviewTurn(input: MockInterviewTurnInput): Promise<MockInterviewTurnResponse> {
+    const payload = mockInterviewTurnInputSchema.parse(input);
+    return postJson("/api/ai/mock-interview/turn", payload, mockInterviewTurnResponseSchema);
   },
   async generateResumeDraft(input: ResumeInput, resumeFile?: File | null): Promise<ResumeResponse> {
     const payload = resumeInputSchema.parse(input);

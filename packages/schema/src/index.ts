@@ -212,6 +212,54 @@ export const aiAssistResponseSchema = z.object({
   provider: z.string().min(1),
 });
 
+export const roasterCompanyTierFitSchema = z.enum([
+  "Needs Overhaul",
+  "Borderline OA Screen",
+  "Strong Campus Shortlist",
+  "Day-1 Recruiter Call",
+]);
+
+export const mockInterviewRoundTypeSchema = z.enum([
+  "Technical DSA",
+  "System Design",
+  "CS Fundamentals",
+  "Behavioral & Leadership",
+]);
+
+export const mockInterviewTurnRoleSchema = z.enum(["interviewer", "candidate", "system"]);
+
+export const mockInterviewTurnMessageSchema = z.object({
+  role: mockInterviewTurnRoleSchema,
+  content: z.string().min(1).max(5_000),
+  timestamp: z.string().optional(),
+});
+
+export const mockInterviewTurnInputSchema = z.object({
+  company: z.string().min(1).max(60),
+  role: z.string().min(1).max(80),
+  roundType: mockInterviewRoundTypeSchema,
+  history: z.array(mockInterviewTurnMessageSchema).max(40),
+  candidateMessage: z.string().min(1).max(5_000),
+  requestHint: z.boolean().optional(),
+});
+
+export const mockInterviewTurnResponseSchema = z.object({
+  interviewerReply: z.string().min(1),
+  stage: z.enum(["greeting", "probing", "deep_dive", "wrap_up"]),
+  quickFeedback: z.string().min(1),
+  suggestedFollowUps: z.array(z.string().min(1)).max(4),
+  isComplete: z.boolean(),
+  provider: z.string().min(1),
+});
+
+export const mockInterviewDimensionsSchema = z.object({
+  problemSolvingDsa: z.number().min(0).max(100),
+  systemDesignArchitecture: z.number().min(0).max(100),
+  communicationClarity: z.number().min(0).max(100),
+  behavioralLeadership: z.number().min(0).max(100),
+  timeComplexityAwareness: z.number().min(0).max(100),
+});
+
 export const mockInterviewInputSchema = z.object({
   company: z.string().min(1).max(60),
   role: z.string().min(1).max(80),
@@ -235,6 +283,9 @@ export const mockInterviewResponseSchema = z.object({
   improvements: z.array(z.string().min(1)),
   nextSteps: z.array(z.string().min(1)),
   provider: z.string().min(1),
+  companyTierFit: roasterCompanyTierFitSchema.optional(),
+  dimensions: mockInterviewDimensionsSchema.optional(),
+  redFlags: z.array(z.string().min(1)).optional(),
 });
 
 export const resumeTemplateKeySchema = z.enum(["signal-single-column", "india-fresher", "product-engineer"]);
@@ -779,6 +830,12 @@ export type SubmissionReceipt = z.infer<typeof submissionReceiptSchema>;
 export type AiAssistMode = z.infer<typeof aiAssistModeSchema>;
 export type AiAssistInput = z.infer<typeof aiAssistInputSchema>;
 export type AiAssistResponse = z.infer<typeof aiAssistResponseSchema>;
+export type MockInterviewRoundType = z.infer<typeof mockInterviewRoundTypeSchema>;
+export type MockInterviewTurnRole = z.infer<typeof mockInterviewTurnRoleSchema>;
+export type MockInterviewTurnMessage = z.infer<typeof mockInterviewTurnMessageSchema>;
+export type MockInterviewTurnInput = z.infer<typeof mockInterviewTurnInputSchema>;
+export type MockInterviewTurnResponse = z.infer<typeof mockInterviewTurnResponseSchema>;
+export type MockInterviewDimensions = z.infer<typeof mockInterviewDimensionsSchema>;
 export type MockInterviewInput = z.infer<typeof mockInterviewInputSchema>;
 export type MockInterviewLiveResponse = z.infer<typeof mockInterviewLiveResponseSchema>;
 export type MockInterviewResponse = z.infer<typeof mockInterviewResponseSchema>;
@@ -884,13 +941,6 @@ export const resumeRoasterInputSchema = z.object({
   targetRole: z.string().min(1).max(100),
   candidateName: z.string().max(100).optional(),
 });
-
-export const roasterCompanyTierFitSchema = z.enum([
-  "Needs Overhaul",
-  "Borderline OA Screen",
-  "Strong Campus Shortlist",
-  "Day-1 Recruiter Call",
-]);
 
 export const resumeRoasterResponseSchema = z.object({
   overallAtsScore: z.number().int().min(0).max(100),

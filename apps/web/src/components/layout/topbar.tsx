@@ -32,6 +32,7 @@ export function Topbar() {
       { href: "/problems", label: "Problems", match: (value) => value === "/problems" || value.startsWith("/problems/") },
       { href: "/tracks", label: "Tracks", match: isTracksPath },
       { href: "/resume-roaster", label: "Resume Roaster" },
+      { href: "/mock-interview", label: "AI Interview" },
       { href: "/readiness-score", label: "Readiness" },
       { href: "/pricing", label: "Pricing" },
       { href: "/for-recruiters", label: "Recruiters" },

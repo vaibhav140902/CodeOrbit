@@ -16,7 +16,6 @@ export async function POST(request: NextRequest) {
   try {
     const viewer = await getViewerContextFromHeaders(request.headers);
     await assertTierRateLimit(request, "mock_interview", viewer);
-    await assertPaidFeatureAccess(request.headers, viewer);
 
     const payload = mockInterviewInputSchema.parse(await request.json());
     const transcript = sanitizePromptInput(payload.transcript, 10_000);
