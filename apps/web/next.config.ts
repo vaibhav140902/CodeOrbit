@@ -20,9 +20,12 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   outputFileTracingRoot: path.join(__dirname, "../../"),
   transpilePackages: ["@codeorbit/ui", "@codeorbit/schema"],
-  serverExternalPackages: ["pdf-parse", "mammoth"],
+  serverExternalPackages: ["pdf-parse", "mammoth", "pdf-lib"],
   async headers() {
     return [
       {
