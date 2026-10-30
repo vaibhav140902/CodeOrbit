@@ -542,6 +542,19 @@ export const proofProfileSchema = z.object({
   updatedAtIso: z.string().datetime(),
 });
 
+export const verifiedProofBadgeSchema = z.object({
+  candidateHandle: slugSchema,
+  fullName: z.string().min(1),
+  verificationHash: z.string().min(16),
+  verifiedAtIso: z.string().datetime(),
+  overallReadiness: z.number().min(0).max(100),
+  proctorTrustScore: z.number().min(0).max(100),
+  solvesCount: z.number().int().nonnegative(),
+  contestsParticipated: z.number().int().nonnegative(),
+  issuer: z.string().min(1),
+  skillsVerified: z.array(z.string().min(1)),
+});
+
 export const recruiterCandidateSummarySchema = z.object({
   handle: slugSchema,
   fullName: z.string().min(1),
@@ -551,6 +564,9 @@ export const recruiterCandidateSummarySchema = z.object({
   targetCompanySlugs: z.array(slugSchema).min(1),
   interviewMomentum: z.enum(["rising", "steady", "needs-attention"]),
   proofProfileShared: z.boolean(),
+  verifiedBadge: verifiedProofBadgeSchema.optional(),
+  dpdpConsentGranted: z.boolean().default(true),
+  proctorScore: z.number().min(0).max(100).optional(),
 });
 
 export const recruiterReviewStatusSchema = z.enum(["new", "reviewing", "shortlisted", "on_hold"]);
@@ -587,6 +603,48 @@ export const campusCohortInterventionSchema = z.object({
 export const campusBetaWorkspaceSchema = z.object({
   cohorts: z.array(campusCohortSnapshotSchema),
   interventions: z.array(campusCohortInterventionSchema),
+});
+
+export const tpoBatchAnalyticsSchema = z.object({
+  cohortId: slugSchema,
+  collegeName: z.string().min(1),
+  batchYear: z.number().int(),
+  totalStudents: z.number().int().nonnegative(),
+  verifiedStudents: z.number().int().nonnegative(),
+  readinessTiers: z.object({
+    dayOneFaangReady: z.number().int().nonnegative(),
+    strongCampusShortlist: z.number().int().nonnegative(),
+    borderlineOaScreen: z.number().int().nonnegative(),
+    needsOverhaul: z.number().int().nonnegative(),
+  }),
+  companyOaClearancePredictions: z.array(
+    z.object({
+      company: z.string().min(1),
+      estimatedClearanceRatePercent: z.number().min(0).max(100),
+      predictedShortlistsCount: z.number().int().nonnegative(),
+    })
+  ),
+  weakTopicHeatmap: z.array(
+    z.object({
+      topic: z.string().min(1),
+      batchAverageMasteryPercent: z.number().min(0).max(100),
+      priorityStatus: z.enum(["Critical Weakness", "Moderate", "Strong"]),
+    })
+  ),
+});
+
+export const recruiterExportInputSchema = z.object({
+  candidateHandles: z.array(slugSchema).min(1),
+  format: z.enum(["csv", "json"]),
+  purpose: z.string().min(1),
+});
+
+export const recruiterExportResponseSchema = z.object({
+  exportedCount: z.number().int().nonnegative(),
+  blockedCount: z.number().int().nonnegative(),
+  csvData: z.string().optional(),
+  jsonData: z.array(z.record(z.string(), z.unknown())).optional(),
+  dpdpAuditRef: z.string().min(1),
 });
 
 export const jobApplicationStatusSchema = z.enum([
@@ -870,6 +928,10 @@ export type RecruiterCandidateSummary = z.infer<typeof recruiterCandidateSummary
 export type RecruiterReviewStatus = z.infer<typeof recruiterReviewStatusSchema>;
 export type RecruiterCandidateReview = z.infer<typeof recruiterCandidateReviewSchema>;
 export type RecruiterBetaWorkspace = z.infer<typeof recruiterBetaWorkspaceSchema>;
+export type VerifiedProofBadge = z.infer<typeof verifiedProofBadgeSchema>;
+export type TpoBatchAnalytics = z.infer<typeof tpoBatchAnalyticsSchema>;
+export type RecruiterExportInput = z.infer<typeof recruiterExportInputSchema>;
+export type RecruiterExportResponse = z.infer<typeof recruiterExportResponseSchema>;
 export type CampusCohortSnapshot = z.infer<typeof campusCohortSnapshotSchema>;
 export type CampusCohortIntervention = z.infer<typeof campusCohortInterventionSchema>;
 export type CampusBetaWorkspace = z.infer<typeof campusBetaWorkspaceSchema>;

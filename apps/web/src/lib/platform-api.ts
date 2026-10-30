@@ -32,6 +32,9 @@ import {
   submissionReceiptSchema,
   campusBetaWorkspaceSchema,
   campusCohortInterventionSchema,
+  tpoBatchAnalyticsSchema,
+  recruiterExportInputSchema,
+  recruiterExportResponseSchema,
   userProfileSchema,
   viewerPreferencesInputSchema,
   viewerPreferencesSchema,
@@ -68,6 +71,9 @@ import {
   type ViewerPreferencesInput,
   type CampusBetaWorkspace,
   type CampusCohortIntervention,
+  type TpoBatchAnalytics,
+  type RecruiterExportInput,
+  type RecruiterExportResponse,
   type WorkspaceRoleUpdateInput,
 } from "@codeorbit/schema";
 import { z } from "zod";
@@ -341,8 +347,7 @@ export const platformApi = {
     return postJson("/api/platform/preferences", payload, viewerPreferencesSchema);
   },
   async getRecruiterBetaWorkspace(): Promise<RecruiterBetaWorkspace> {
-    const response = await callFunction<Record<string, never>, unknown>("getRecruiterBetaWorkspace", {});
-    return recruiterBetaWorkspaceSchema.parse(response);
+    return getJson("/api/platform/recruiter/workspace", recruiterBetaWorkspaceSchema);
   },
   async saveRecruiterCandidateReview(input: {
     candidateHandle: string;
@@ -353,12 +358,18 @@ export const platformApi = {
       .omit({ updatedAtIso: true })
       .extend({ note: z.string().max(1000).optional().default("") })
       .parse(input);
-    const response = await callFunction<typeof payload, unknown>("saveRecruiterCandidateReview", payload);
-    return recruiterCandidateReviewSchema.parse(response);
+    return postJson("/api/platform/recruiter/review", payload, recruiterCandidateReviewSchema);
+  },
+  async exportRecruiterCandidates(input: RecruiterExportInput): Promise<RecruiterExportResponse> {
+    const payload = recruiterExportInputSchema.parse(input);
+    return postJson("/api/platform/recruiter/export", payload, recruiterExportResponseSchema);
   },
   async getCampusBetaWorkspace(): Promise<CampusBetaWorkspace> {
-    const response = await callFunction<Record<string, never>, unknown>("getCampusBetaWorkspace", {});
-    return campusBetaWorkspaceSchema.parse(response);
+    return getJson("/api/platform/campus/workspace", campusBetaWorkspaceSchema);
+  },
+  async getTpoBatchAnalytics(cohortId?: string): Promise<TpoBatchAnalytics> {
+    const query = cohortId ? `?cohortId=${encodeURIComponent(cohortId)}` : "";
+    return getJson(`/api/platform/campus/analytics${query}`, tpoBatchAnalyticsSchema);
   },
   async saveCampusCohortIntervention(input: {
     cohortId: string;
@@ -369,8 +380,7 @@ export const platformApi = {
       .omit({ updatedAtIso: true })
       .extend({ note: z.string().max(1000).optional().default("") })
       .parse(input);
-    const response = await callFunction<typeof payload, unknown>("saveCampusCohortIntervention", payload);
-    return campusCohortInterventionSchema.parse(response);
+    return postJson("/api/platform/campus/intervention", payload, campusCohortInterventionSchema);
   },
   async setWorkspaceRole(input: WorkspaceRoleUpdateInput): Promise<UserProfile> {
     const payload = workspaceRoleUpdateInputSchema.parse(input);
