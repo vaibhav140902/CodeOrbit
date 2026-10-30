@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mockInterviewInputSchema, mockInterviewResponseSchema } from "@codeorbit/schema";
 import { AccessControlError, assertPaidFeatureAccess } from "@/lib/server/access-control";
-import { assertRateLimit } from "@/lib/server/rate-limit";
+import {
+  assertTierRateLimit,
+  RateLimitError,
+  rateLimitResponse,
+} from "@/lib/server/rate-limit";
 import { callGeminiJson, sanitizePromptInput } from "@/lib/server/gemini";
 import { getViewerContextFromHeaders, recordInterviewSessionData } from "@/lib/server/platform-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const getRequestKey = (request: NextRequest) =>
-  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
-
 export async function POST(request: NextRequest) {
   let baselineScore = 72;
   const viewer = await getViewerContextFromHeaders(request.headers);
 
   try {
-    assertRateLimit(`mock-interview:${getRequestKey(request)}`, 10, 60_000);
-    await assertPaidFeatureAccess(request.headers);
+    await assertTierRateLimit(request, "mock_interview", viewer);
+    await assertPaidFeatureAccess(request.headers, viewer);
 
     const payload = mockInterviewInputSchema.parse(await request.json());
     const transcript = sanitizePromptInput(payload.transcript, 20_000);
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
         role: payload.role,
         overallScore: response.overallScore,
         transcript: payload.transcript,
-        feedback: response,
+        feedback: response as unknown as Record<string, unknown>,
       });
     }
 
@@ -57,10 +58,13 @@ export async function POST(request: NextRequest) {
       provider: "gemini",
     });
   } catch (error) {
-    console.error("Mock interview scoring failed:", error);
+    if (error instanceof RateLimitError) {
+      return rateLimitResponse(error);
+    }
     if (error instanceof AccessControlError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
+    console.error("Mock interview scoring failed:", error);
     const message = (error as Error).message || "Mock interview scoring failed.";
 
     if (message.includes("JSON") || message.includes("Gemini")) {

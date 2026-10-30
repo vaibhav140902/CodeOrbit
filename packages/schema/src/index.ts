@@ -821,3 +821,39 @@ export type ProctorEventInput = z.infer<typeof proctorEventInputSchema>;
 export type DpdpConsentLog = z.infer<typeof dpdpConsentLogSchema>;
 export type DpdpConsentInput = z.infer<typeof dpdpConsentInputSchema>;
 
+export const userTierSchema = z.enum(["guest", "free", "pro"]);
+
+export const rateLimitActionSchema = z.enum([
+  "code_execution",
+  "resume_generation",
+  "resume_export",
+  "problem_assist",
+  "mock_interview",
+  "readiness_score",
+  "billing_action",
+]);
+
+export const rateLimitStatusSchema = z.object({
+  limit: z.number().int().positive(),
+  remaining: z.number().int().nonnegative(),
+  resetAt: z.number().int().positive(),
+  tier: userTierSchema,
+  action: rateLimitActionSchema,
+});
+
+export const rateLimitErrorResponseSchema = z.object({
+  error: z.literal("RATE_LIMIT_EXCEEDED"),
+  message: z.string(),
+  retryAfterSec: z.number().int().positive(),
+  resetAt: z.number().int().positive(),
+  limit: z.number().int().positive(),
+  tier: userTierSchema,
+  action: z.string(),
+});
+
+export type UserTier = z.infer<typeof userTierSchema>;
+export type RateLimitAction = z.infer<typeof rateLimitActionSchema>;
+export type RateLimitStatus = z.infer<typeof rateLimitStatusSchema>;
+export type RateLimitErrorResponse = z.infer<typeof rateLimitErrorResponseSchema>;
+
+

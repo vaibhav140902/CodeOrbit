@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runCodeInputSchema } from "@codeorbit/schema";
-import { assertRateLimit } from "@/lib/server/rate-limit";
+import {
+  assertTierRateLimit,
+  RateLimitError,
+  rateLimitResponse,
+} from "@/lib/server/rate-limit";
 import { executeWithJudge0 } from "@/lib/server/judge0";
+import { getViewerContextFromHeaders } from "@/lib/server/platform-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const getRequestKey = (request: NextRequest) =>
-  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
-
 export async function POST(request: NextRequest) {
   try {
-    assertRateLimit(`platform-run:${getRequestKey(request)}`, 30, 60_000);
+    const viewer = await getViewerContextFromHeaders(request.headers);
+    await assertTierRateLimit(request, "code_execution", viewer);
+
     const input = runCodeInputSchema.parse(await request.json());
     const result = await executeWithJudge0({
       language: input.language,
@@ -34,6 +38,9 @@ export async function POST(request: NextRequest) {
       language: result.language,
     });
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      return rateLimitResponse(error);
+    }
     return NextResponse.json({ message: (error as Error).message || "Run failed." }, { status: 400 });
   }
 }

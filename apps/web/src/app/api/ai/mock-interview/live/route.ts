@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mockInterviewInputSchema, mockInterviewLiveResponseSchema } from "@codeorbit/schema";
 import { AccessControlError, assertPaidFeatureAccess } from "@/lib/server/access-control";
-import { assertRateLimit } from "@/lib/server/rate-limit";
+import {
+  assertTierRateLimit,
+  RateLimitError,
+  rateLimitResponse,
+} from "@/lib/server/rate-limit";
 import { callGeminiJson, sanitizePromptInput } from "@/lib/server/gemini";
+import { getViewerContextFromHeaders } from "@/lib/server/platform-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const getRequestKey = (request: NextRequest) =>
-  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
-
 export async function POST(request: NextRequest) {
   try {
-    assertRateLimit(`mock-interview-live:${getRequestKey(request)}`, 20, 60_000);
-    await assertPaidFeatureAccess(request.headers);
+    const viewer = await getViewerContextFromHeaders(request.headers);
+    await assertTierRateLimit(request, "mock_interview", viewer);
+    await assertPaidFeatureAccess(request.headers, viewer);
 
     const payload = mockInterviewInputSchema.parse(await request.json());
     const transcript = sanitizePromptInput(payload.transcript, 10_000);
@@ -39,10 +42,13 @@ export async function POST(request: NextRequest) {
       provider: "gemini",
     });
   } catch (error) {
-    console.error("Live mock interview feedback failed:", error);
+    if (error instanceof RateLimitError) {
+      return rateLimitResponse(error);
+    }
     if (error instanceof AccessControlError) {
       return NextResponse.json({ message: error.message }, { status: error.status });
     }
+    console.error("Live mock interview feedback failed:", error);
     return NextResponse.json({
       headline: "Live Gemini Coach",
       bullets: [

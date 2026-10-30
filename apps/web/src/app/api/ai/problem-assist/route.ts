@@ -1,8 +1,13 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { aiAssistInputSchema, type AiAssistMode } from "@codeorbit/schema";
-import { assertRateLimit } from "@/lib/server/rate-limit";
+import {
+  assertTierRateLimit,
+  RateLimitError,
+  rateLimitResponse,
+} from "@/lib/server/rate-limit";
 import { callGeminiText, sanitizePromptInput } from "@/lib/server/gemini";
+import { getViewerContextFromHeaders } from "@/lib/server/platform-data";
 import {
   canExecuteGeminiCall,
   createAiCacheKey,
@@ -42,7 +47,8 @@ export async function POST(request: NextRequest) {
   let rawPayload: unknown = null;
 
   try {
-    assertRateLimit(`problem-assist:${getRequestKey(request)}`, 20, 60_000);
+    const viewer = await getViewerContextFromHeaders(request.headers);
+    await assertTierRateLimit(request, "problem_assist", viewer);
 
     rawPayload = await request.json();
     const payload = aiAssistInputSchema.parse(rawPayload);
@@ -133,6 +139,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(responseData);
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      return rateLimitResponse(error);
+    }
     console.error("Problem assist route error:", error);
 
     // If parsing failed on malformed request input:
