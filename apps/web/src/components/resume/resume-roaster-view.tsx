@@ -130,6 +130,21 @@ export function ResumeRoasterView() {
     setTimeout(() => setCopiedShare(false), 2500);
   };
 
+  const handleShareLinkedIn = () => {
+    if (!roastResult) return;
+    const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/resume-roaster` : "https://codeorbit.app/resume-roaster";
+    const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+    window.open(linkedInUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!roastResult) return;
+    const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/resume-roaster` : "https://codeorbit.app/resume-roaster";
+    const message = `${roastResult.socialShareText}\n\nRoast your resume free on CodeOrbit:\n${shareUrl}`;
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, "_blank", "noopener,noreferrer");
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 85) return "text-emerald-400 border-emerald-400/40 bg-emerald-500/10";
     if (score >= 70) return "text-cyan-400 border-cyan-400/40 bg-cyan-500/10";
@@ -369,19 +384,62 @@ export function ResumeRoasterView() {
             <div className="mt-8 rounded-xl border border-indigo-500/30 bg-indigo-950/20 p-5">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                  <h4 className="text-sm font-bold text-indigo-300">Share Your Readiness Scorecard</h4>
+                  <h4 className="text-sm font-bold text-indigo-300 flex items-center gap-2">
+                    <span>Share Your Readiness Scorecard</span>
+                    <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] text-indigo-300 font-mono">#CodeOrbitReady</span>
+                  </h4>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Post your score on LinkedIn or X with #CodeOrbitReady to demonstrate verified candidate proof.
+                    Share your verified ATS evaluation on LinkedIn or WhatsApp to showcase your candidate readiness.
                   </p>
                 </div>
 
-                <Button
-                  variant="secondary"
-                  className="text-xs font-semibold shrink-0"
-                  onClick={handleCopyShare}
-                >
-                  {copiedShare ? "✓ Copied to Clipboard!" : "Copy Shareable Card"}
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleShareLinkedIn}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A66C2] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#004182] transition-colors"
+                  >
+                    <span>Share on LinkedIn</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleShareWhatsApp}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1DA851] transition-colors"
+                  >
+                    <span>WhatsApp</span>
+                  </button>
+
+                  <Button
+                    variant="secondary"
+                    className="text-xs font-semibold"
+                    onClick={handleCopyShare}
+                  >
+                    {copiedShare ? "✓ Copied!" : "Copy Post"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Dynamic OpenGraph Social Card Preview */}
+              <div className="mt-4 overflow-hidden rounded-lg border border-slate-800 bg-slate-900/60 shadow-lg">
+                <div className="px-3 py-1.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Dynamic Verified Card Preview</span>
+                  <a
+                    href={`/api/og/roaster?score=${roastResult.atsScore}&company=${encodeURIComponent(roastResult.targetCompany)}&role=${encodeURIComponent(roastResult.targetRole)}&tier=${encodeURIComponent(roastResult.companyTierFit)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:underline"
+                  >
+                    Open Card Image ↗
+                  </a>
+                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/og/roaster?score=${roastResult.atsScore}&company=${encodeURIComponent(roastResult.targetCompany)}&role=${encodeURIComponent(roastResult.targetRole)}&tier=${encodeURIComponent(roastResult.companyTierFit)}`}
+                  alt={`CodeOrbit ATS Score Card - ${roastResult.atsScore}/100`}
+                  className="w-full h-auto aspect-[1200/630] object-cover"
+                  loading="lazy"
+                />
               </div>
 
               <div className="mt-3 rounded bg-black/50 p-2.5 font-mono text-xs text-indigo-200 border border-slate-800">

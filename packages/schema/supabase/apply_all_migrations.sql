@@ -481,19 +481,23 @@ alter table public.analytics_events enable row level security;
 alter table public.waitlist_submissions enable row level security;
 
 -- Public Read Policies for Catalog
+drop policy if exists "Allow public read on published problems" on public.problems;
 create policy "Allow public read on published problems"
   on public.problems for select
   using (status = 'published');
 
+drop policy if exists "Allow public read on problem tags" on public.problem_tags;
 create policy "Allow public read on problem tags"
   on public.problem_tags for select
   using (true);
 
+drop policy if exists "Allow public read on problem companies" on public.problem_companies;
 create policy "Allow public read on problem companies"
   on public.problem_companies for select
   using (true);
 
 -- Public Insert Policy for Waitlist
+drop policy if exists "Allow public insert on waitlist" on public.waitlist_submissions;
 create policy "Allow public insert on waitlist"
   on public.waitlist_submissions for insert
   with check (true);
@@ -585,22 +589,27 @@ alter table public.contests enable row level security;
 alter table public.proctor_events enable row level security;
 alter table public.dpdp_consent_logs enable row level security;
 
+drop policy if exists "Allow public read on active tenants" on public.tenants;
 create policy "Allow public read on active tenants"
   on public.tenants for select
   using (plan_status in ('pilot', 'active'));
 
+drop policy if exists "Allow members to read own tenant membership" on public.tenant_memberships;
 create policy "Allow members to read own tenant membership"
   on public.tenant_memberships for select
   using (true);
 
+drop policy if exists "Allow public read on published contests" on public.contests;
 create policy "Allow public read on published contests"
   on public.contests for select
   using (is_published = true);
 
+drop policy if exists "Allow authenticated users to insert proctor events" on public.proctor_events;
 create policy "Allow authenticated users to insert proctor events"
   on public.proctor_events for insert
   with check (true);
 
+drop policy if exists "Allow users to read and insert their DPDP consent" on public.dpdp_consent_logs;
 create policy "Allow users to read and insert their DPDP consent"
   on public.dpdp_consent_logs for all
   using (true)

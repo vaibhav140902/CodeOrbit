@@ -17,6 +17,7 @@ const suites = [
   { file: "test-resume-roaster.mjs", title: "Milestone 7: ATS Resume Builder & Viral Resume Roaster" },
   { file: "test-mock-interview.mjs", title: "Milestone 8: AI Voice/Chat Mock Interviewer & Scorecard" },
   { file: "test-b2b-portal.mjs", title: "Milestone 9: B2B TPO Batch Analytics & Cryptographic Proof Badges" },
+  { file: "test-phase2-growth.mjs", title: "Phase 2: Viral Growth, Health & NIRF Compliance" },
 ];
 
 let totalPassed = 0;
@@ -32,7 +33,7 @@ for (let i = 0; i < suites.length; i++) {
 
   const res = spawnSync("node", ["--experimental-strip-types", scriptPath], {
     encoding: "utf-8",
-    stdio: "inherit",
+    stdio: ["ignore", "inherit", "inherit"],
     env: { ...process.env, NODE_ENV: "production" },
   });
 
@@ -65,6 +66,6 @@ if (totalFailed > 0) {
   console.error("CERTIFICATION FAILED: One or more suites did not pass.");
   process.exit(1);
 } else {
-  console.log(">>> ALL 9 MILESTONES CERTIFIED FOR PRODUCTION DEPLOYMENT (100% PASS RATE) <<<");
+  console.log(">>> ALL 10 MILESTONES & PHASES CERTIFIED FOR PRODUCTION DEPLOYMENT (100% PASS RATE) <<<");
   process.exit(0);
 }

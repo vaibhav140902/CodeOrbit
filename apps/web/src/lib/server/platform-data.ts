@@ -2253,6 +2253,50 @@ export const getLatestDpdpConsent = async (userId: string): Promise<DpdpConsentL
   };
 };
 
+export const getAllDpdpConsentLogs = async (limit = 50): Promise<DpdpConsentLog[]> => {
+  if (hasSupabase()) {
+    try {
+      const res = await requestSupabase<SupabaseDpdpConsentRow[]>("dpdp_consent_logs", {
+        params: {
+          select: "*",
+          order: "consented_at.desc",
+          limit: limit.toString(),
+        },
+      });
+      if (Array.isArray(res.data)) {
+        return res.data.map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          consentVersion: row.consent_version,
+          isUnder18: row.is_under_18,
+          parentGuardianEmail: row.parent_guardian_email || undefined,
+          purposesAccepted: row.purposes_accepted,
+          ipAddress: row.ip_address || undefined,
+          userAgent: row.user_agent || undefined,
+          consentedAtIso: row.consented_at,
+          revokedAtIso: row.revoked_at || undefined,
+        }));
+      }
+    } catch (err) {
+      console.warn("Notice: could not query DPDP consent logs from Supabase:", err);
+    }
+  }
+
+  const store = readLocalStorage();
+  return (store.dpdp_consent_logs || []).slice(0, limit).map((record) => ({
+    id: record.id,
+    userId: record.user_id,
+    consentVersion: record.consent_version,
+    isUnder18: record.is_under_18,
+    parentGuardianEmail: record.parent_guardian_email || undefined,
+    purposesAccepted: record.purposes_accepted,
+    ipAddress: record.ip_address || undefined,
+    userAgent: record.user_agent || undefined,
+    consentedAtIso: record.consented_at,
+    revokedAtIso: record.revoked_at || undefined,
+  }));
+};
+
 export const recordProctorEvent = async (
   input: ProctorEventInput,
   viewer?: ViewerContext

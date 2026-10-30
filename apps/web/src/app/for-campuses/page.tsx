@@ -33,9 +33,12 @@ export default function CampusesPage() {
                 <li>- Support bilingual English and Hindi candidate workflows where useful.</li>
                 <li>- Build a bridge from preparation to applications, interviews, and outcomes.</li>
               </ul>
-              <div className="mt-6">
-                <a href="/campus-beta" className="btn-secondary">
-                  Preview authenticated beta
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <a href="/for-campuses/demo" className="btn-primary text-xs font-semibold py-2 px-4">
+                  Launch Interactive TPO Demo ↗
+                </a>
+                <a href="/campus-beta" className="btn-secondary text-xs font-semibold py-2 px-4">
+                  Authenticated Portal
                 </a>
               </div>
             </article>

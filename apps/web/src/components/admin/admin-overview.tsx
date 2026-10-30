@@ -78,10 +78,23 @@ export function AdminOverview() {
   return (
     <div className="app-shell">
       <div className="page-container">
-        <div className="mb-8">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Admin</p>
-          <h1 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">Admin Dashboard</h1>
-          <p className="text-muted mt-2 text-base sm:text-lg">Monitor users, premium growth, content readiness, and revenue from the secure backend.</p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Admin</p>
+            <h1 className="mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">Admin Dashboard</h1>
+            <p className="text-muted mt-2 text-base sm:text-lg">Monitor users, premium growth, content readiness, and revenue from the secure backend.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a href="/admin/dpdp" className="btn-secondary text-xs font-semibold py-2 px-3">
+              🛡 DPDP Consent Audit
+            </a>
+            <a href="/for-campuses/demo" className="btn-secondary text-xs font-semibold py-2 px-3">
+              🏫 TPO Demo Workspace
+            </a>
+            <a href="/api/health" target="_blank" rel="noopener noreferrer" className="btn-secondary text-xs font-semibold py-2 px-3">
+              ⚡ Health Probe ↗
+            </a>
+          </div>
         </div>
 
         {notice && (
