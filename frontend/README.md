@@ -1,4 +1,16 @@
-# React + TypeScript + Vite
+# [DECOMMISSIONED] Legacy Vite SPA (frontend/)
+
+> **NOTICE: This legacy Vite single-page application is permanently frozen and decommissioned.**
+> All active development, user journeys, Monaco DSA IDE, AI Resume Builder, and enterprise placement cell features reside in **`apps/web/` (Next.js 15 App Router on Port 3001)**.
+> 
+> To launch the active production platform:
+> ```bash
+> npm run dev:web
+> ```
+
+---
+
+## Historical Archive Reference
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

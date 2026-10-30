@@ -2,6 +2,12 @@ import { createHmac, createVerify, randomUUID, timingSafeEqual } from "node:cryp
 import fs from "node:fs";
 import path from "node:path";
 import {
+  extractViewerFromHeaders,
+  getGooglePublicCerts,
+  verifyFirebaseToken,
+  type ViewerContext,
+} from "./auth-guard";
+import {
   type ActivitySummary,
   type AdminSummary,
   type BillingOrder,
@@ -31,11 +37,7 @@ const SUPABASE_URL = (process.env.SUPABASE_URL ?? "").trim().replace(/\/+$/, "")
 const SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
 const SUPABASE_REST_URL = SUPABASE_URL ? `${SUPABASE_URL}/rest/v1` : "";
 
-export interface ViewerContext {
-  uid?: string;
-  email?: string;
-  displayName?: string;
-}
+export type { ViewerContext };
 
 interface SupabaseUserRow {
   id: string;
@@ -403,110 +405,11 @@ const countRows = async (table: string, params: Record<string, string | number |
   return Number.isFinite(total) ? total : 0;
 };
 
-interface CachedCertificates {
-  certs: Record<string, string>;
-  expiresAt: number;
-}
+export { getGooglePublicCerts };
 
-let googleCertCache: CachedCertificates | null = null;
-
-const getGooglePublicCerts = async (): Promise<Record<string, string>> => {
-  const now = Date.now();
-  if (googleCertCache && googleCertCache.expiresAt > now) {
-    return googleCertCache.certs;
-  }
-
-  try {
-    const res = await fetch(
-      "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
-      { cache: "no-store" }
-    );
-    if (!res.ok) {
-      throw new Error(`Failed to fetch Google certs: HTTP ${res.status}`);
-    }
-
-    const certs = (await res.json()) as Record<string, string>;
-    const cacheControl = res.headers.get("cache-control") || "";
-    const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
-    const maxAgeSec = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : 3600;
-
-    googleCertCache = {
-      certs,
-      expiresAt: now + maxAgeSec * 1000,
-    };
-    return certs;
-  } catch (error) {
-    if (googleCertCache) {
-      return googleCertCache.certs;
-    }
-    console.warn("Could not retrieve Google certificates for JWT verification:", error);
-    return {};
-  }
-};
-
-const verifyFirebaseIdToken = async (token: string): Promise<Record<string, unknown> | null> => {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) {
-      return null;
-    }
-
-    const [headerB64, payloadB64, signatureB64] = parts;
-    const headerJson = Buffer.from(headerB64.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
-    const header = JSON.parse(headerJson) as { alg?: string; kid?: string };
-
-    if (header.alg !== "RS256" || !header.kid) {
-      return null;
-    }
-
-    const payloadJson = Buffer.from(payloadB64.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
-    const payload = JSON.parse(payloadJson) as Record<string, unknown>;
-
-    const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "leetcode-clone-3ac0a").trim();
-    const nowSec = Math.floor(Date.now() / 1000);
-
-    // 1. Expiration check with 300s clock skew tolerance
-    if (typeof payload.exp !== "number" || payload.exp < nowSec - 300) {
-      return null;
-    }
-    // 2. Issued-at check
-    if (typeof payload.iat !== "number" || payload.iat > nowSec + 300) {
-      return null;
-    }
-    // 3. Audience check
-    if (payload.aud !== projectId) {
-      return null;
-    }
-    // 4. Issuer check
-    if (payload.iss !== `https://securetoken.google.com/${projectId}`) {
-      return null;
-    }
-    // 5. Subject check
-    if (typeof payload.sub !== "string" || payload.sub.trim() === "") {
-      return null;
-    }
-
-    // Cryptographic RS256 signature verification using Google's public key
-    const certs = await getGooglePublicCerts();
-    const cert = certs[header.kid];
-    if (!cert) {
-      return null;
-    }
-
-    const verifier = createVerify("RSA-SHA256");
-    verifier.update(`${headerB64}.${payloadB64}`);
-    const signatureBuffer = Buffer.from(signatureB64.replace(/-/g, "+").replace(/_/g, "/"), "base64");
-    const isSignatureValid = verifier.verify(cert, signatureBuffer);
-
-    if (!isSignatureValid) {
-      return null;
-    }
-
-    return payload;
-  } catch (error) {
-    console.warn("Cryptographic token verification error:", error);
-    return null;
-  }
+export const verifyFirebaseIdToken = async (token: string): Promise<Record<string, unknown> | null> => {
+  const result = await verifyFirebaseToken(token);
+  return result.valid ? (result.payload ?? null) : null;
 };
 
 interface LocalUserRecord {
@@ -721,38 +624,7 @@ const ensureLocalUser = (viewer: ViewerContext, store: LocalStorageSchema): Loca
   return user;
 };
 
-export const getViewerContextFromHeaders = async (headers: Headers): Promise<ViewerContext> => {
-  const authHeader = headers.get("authorization") ?? headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7).trim();
-    const payload = await verifyFirebaseIdToken(token);
-    if (payload && (payload.user_id || payload.sub)) {
-      return {
-        uid: String(payload.user_id || payload.sub),
-        email: typeof payload.email === "string" ? payload.email : undefined,
-        displayName: typeof payload.name === "string" ? payload.name : undefined,
-      };
-    }
-    // In production, an invalid Bearer token fails closed immediately
-    if (process.env.NODE_ENV === "production") {
-      return {};
-    }
-  }
-
-  // In development only, allow explicit debug headers for local testing
-  if (process.env.NODE_ENV === "development") {
-    const devUid = headers.get("x-codeorbit-viewer-uid");
-    if (devUid) {
-      return {
-        uid: devUid,
-        email: headers.get("x-codeorbit-viewer-email") ?? undefined,
-        displayName: headers.get("x-codeorbit-viewer-name") ?? undefined,
-      };
-    }
-  }
-
-  return {};
-};
+export const getViewerContextFromHeaders = extractViewerFromHeaders;
 
 export const listProblemsData = async (): Promise<ProblemListItem[]> => {
   if (!hasSupabase()) {

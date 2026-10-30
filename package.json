@@ -15,7 +15,7 @@
     "lint:web": "npm run lint --workspace @codeorbit/web",
     "typecheck": "turbo run typecheck",
     "typecheck:web": "npm run typecheck --workspace @codeorbit/web",
-    "legacy:frontend": "npm run dev --prefix frontend",
+    "legacy:frontend": "echo 'Error: Legacy Vite SPA (frontend/) is permanently decommissioned. Run \"npm run dev:web\" to launch Next.js 15 on Port 3001.' && exit 1",
     "legacy:functions": "npm run serve --prefix backend/functions"
   },
   "devDependencies": {
