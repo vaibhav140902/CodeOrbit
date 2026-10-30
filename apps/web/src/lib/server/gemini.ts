@@ -1,5 +1,5 @@
 import { ZodType } from "zod";
-import { acquireGeminiQuota, fetchWithTimeout, getGeminiQuotaInfo } from "@/lib/server/ai-shield";
+import { acquireGeminiQuota, fetchWithTimeout, getGeminiQuotaInfo } from "./ai-shield.ts";
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const FALLBACK_GEMINI_MODELS = ["gemini-2.0-flash"];

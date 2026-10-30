@@ -1,15 +1,19 @@
 import {
   resumeInputSchema,
+  resumeRoasterInputSchema,
+  resumeRoasterResponseSchema,
   type ResumeAtsBreakdown,
   type ResumeInput,
   type ResumeResponse,
+  type ResumeRoasterInput,
+  type ResumeRoasterResponse,
   type ResumeTemplateKey,
 } from "@codeorbit/schema";
 import { z } from "zod";
-import { resumeTemplates } from "@/data/hiring-os";
-import { callGeminiJson, sanitizePromptInput } from "@/lib/server/gemini";
-import { getActivitySummaryData, getDashboardSummaryData, type ViewerContext } from "@/lib/server/platform-data";
-import { buildResumeLatexSource, extractResumeText } from "@/lib/server/resume-utils";
+import { resumeTemplates } from "../../data/hiring-os.ts";
+import { callGeminiJson, sanitizePromptInput } from "./gemini.ts";
+import { getActivitySummaryData, getDashboardSummaryData, type ViewerContext } from "./platform-data.ts";
+import { buildResumeLatexSource, extractResumeText } from "./resume-utils.ts";
 
 type ResumeDraftSeed = Omit<ResumeResponse, "templateName" | "atsBreakdown" | "latexSource">;
 
@@ -706,3 +710,328 @@ export const generateResumeDraftWithGemini = async (input: ResumeInput, viewer?:
     return finalizeDraft(input, fallbackDraft);
   }
 };
+
+// ============================================================================
+// 5. COMPANY ROLE PROFILES & VIRAL RESUME ROASTER
+// ============================================================================
+
+export interface CompanyAtsProfile {
+  name: string;
+  expectedKeywords: string[];
+  cultureNotes: string;
+  recruiterFocus: string;
+}
+
+export const COMPANY_ATS_PROFILES: Record<string, CompanyAtsProfile> = {
+  amazon: {
+    name: "Amazon",
+    expectedKeywords: [
+      "aws",
+      "distributed systems",
+      "scalability",
+      "latency",
+      "metrics",
+      "leadership principles",
+      "customer obsession",
+      "concurrency",
+      "unit testing",
+      "ci/cd",
+      "data structures",
+      "algorithms",
+    ],
+    cultureNotes: "Demands STAR method with exact business metrics (e.g. reduced latency by 35%, saved $20k). Heavy weight on Leadership Principles & Ownership.",
+    recruiterFocus: "High-scale backend, distributed systems, clean architectural trade-offs.",
+  },
+  infosys: {
+    name: "Infosys",
+    expectedKeywords: [
+      "java",
+      "python",
+      "data structures",
+      "algorithms",
+      "rdbms",
+      "sql",
+      "rest apis",
+      "spring boot",
+      "object-oriented programming",
+      "git",
+      "problem solving",
+    ],
+    cultureNotes: "Prefers solid core CS fundamentals, standardized project structures, clear coursework, and high academic consistency.",
+    recruiterFocus: "Specialist Programmer / Digital screen checks for strong DSA logic and clean database design.",
+  },
+  tcs: {
+    name: "TCS",
+    expectedKeywords: [
+      "c++",
+      "java",
+      "python",
+      "data structures",
+      "algorithms",
+      "dbms",
+      "sql",
+      "operating systems",
+      "computer networks",
+      "clean code",
+    ],
+    cultureNotes: "Requires demonstrable foundational breadth across Operating Systems, Networks, and core programming languages.",
+    recruiterFocus: "TCS Digital / Innovator screening looks for clean algorithmic problem solving without boilerplate bloat.",
+  },
+  flipkart: {
+    name: "Flipkart",
+    expectedKeywords: [
+      "microservices",
+      "kafka",
+      "redis",
+      "high-throughput",
+      "concurrency",
+      "distributed caching",
+      "system design",
+      "data structures",
+      "low-latency",
+      "postgresql",
+    ],
+    cultureNotes: "Prioritizes engineers who understand high-throughput e-commerce traffic spikes (Big Billion Days scale) and caching invariants.",
+    recruiterFocus: "Strong DSA + concurrency + production systems thinking.",
+  },
+  google: {
+    name: "Google",
+    expectedKeywords: [
+      "algorithms",
+      "data structures",
+      "complexity analysis",
+      "concurrency",
+      "distributed systems",
+      "clean code",
+      "unit testing",
+      "scalability",
+      "python",
+      "c++",
+      "go",
+    ],
+    cultureNotes: "Zero tolerance for vague claims. Must demonstrate deep algorithmic intuition, asymptotic time/space bounds, and rigorous testing.",
+    recruiterFocus: "Extreme algorithmic depth, problem-solving elegance, and scalable engineering.",
+  },
+  microsoft: {
+    name: "Microsoft",
+    expectedKeywords: [
+      "data structures",
+      "algorithms",
+      "azure",
+      "c#",
+      "typescript",
+      "system design",
+      "object-oriented design",
+      "cloud architectures",
+      "testing",
+      "collaboration",
+    ],
+    cultureNotes: "Emphasizes maintainable, production-ready code, practical software engineering trade-offs, and clear communication.",
+    recruiterFocus: "Balanced DSA, clean design patterns, and dependable software craft.",
+  },
+  swiggy: {
+    name: "Swiggy",
+    expectedKeywords: [
+      "microservices",
+      "golang",
+      "java",
+      "kafka",
+      "redis",
+      "event-driven",
+      "real-time systems",
+      "distributed locks",
+      "high availability",
+    ],
+    cultureNotes: "Looks for real-time logistics, geo-indexing, event streams, and sub-100ms API response targets.",
+    recruiterFocus: "Fast-moving product engineering, resilient distributed services.",
+  },
+  razorpay: {
+    name: "Razorpay",
+    expectedKeywords: [
+      "payment gateways",
+      "fintech",
+      "idempotency",
+      "acid transactions",
+      "postgresql",
+      "go",
+      "microservices",
+      "distributed transactions",
+      "security",
+    ],
+    cultureNotes: "High scrutiny on financial accuracy, idempotency keys, distributed transaction safety, and zero-downtime architecture.",
+    recruiterFocus: "Backend engineering depth, financial data integrity, high-volume APIs.",
+  },
+  zoho: {
+    name: "Zoho",
+    expectedKeywords: [
+      "java",
+      "c++",
+      "data structures",
+      "in-house libraries",
+      "memory efficiency",
+      "low-level design",
+      "algorithms",
+      "problem solving",
+    ],
+    cultureNotes: "Values ground-up builders who don't just glue third-party libraries together. Deep emphasis on raw language fundamentals.",
+    recruiterFocus: "Hands-on coding rounds, custom data structures, practical problem-solving.",
+  },
+};
+
+const resolveCompanyProfile = (companyName: string): CompanyAtsProfile => {
+  const normalized = companyName.toLowerCase().trim();
+  for (const [key, profile] of Object.entries(COMPANY_ATS_PROFILES)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return profile;
+    }
+  }
+
+  return {
+    name: companyName,
+    expectedKeywords: [
+      "data structures",
+      "algorithms",
+      "problem solving",
+      "system design",
+      "apis",
+      "sql",
+      "testing",
+      "git",
+      "performance",
+    ],
+    cultureNotes: "Standard software engineering assessment focusing on data structures, algorithmic complexity, and clean code hygiene.",
+    recruiterFocus: "Core technical competence, problem-solving speed, and verified project outcomes.",
+  };
+};
+
+export const roastResumeDeterministic = (input: ResumeRoasterInput): ResumeRoasterResponse => {
+  const profile = resolveCompanyProfile(input.targetCompany);
+  const text = input.resumeText.toLowerCase();
+
+  // Keyword Matching
+  const foundKeywords: string[] = [];
+  const missingCrucialKeywords: string[] = [];
+  for (const keyword of profile.expectedKeywords) {
+    if (text.includes(keyword.toLowerCase())) {
+      foundKeywords.push(keyword);
+    } else {
+      missingCrucialKeywords.push(keyword);
+    }
+  }
+
+  // Metrics Scanner
+  const metricRegex = /\b(\d+(?:\.\d+)?%|\d+x|\d+ms|\d+k|\d+m|\$\d+|\b\d+\s*(?:users|clients|requests|qps|endpoints|tests|bugs))\b/gi;
+  const metricsFound = input.resumeText.match(metricRegex) ?? [];
+  const quantifiedBulletsCount = metricsFound.length;
+
+  // Buzzword Fluff Scanner
+  const fluffRegex = /\b(hardworking|passionate|self-motivated|team player|quick learner|enthusiastic|go-getter|detail-oriented|results-driven|dynamic)\b/gi;
+  const fluffFound = input.resumeText.match(fluffRegex) ?? [];
+  const fluffyBulletsCount = fluffFound.length;
+
+  // Compute 0-100 ATS Score
+  const keywordMatchRatio = foundKeywords.length / Math.max(1, profile.expectedKeywords.length);
+  let computedScore = Math.round(
+    52 +
+    keywordMatchRatio * 32 +
+    Math.min(quantifiedBulletsCount * 4, 18) -
+    Math.min(fluffyBulletsCount * 4, 16)
+  );
+
+  computedScore = Math.max(22, Math.min(94, computedScore));
+
+  let companyTierFit: ResumeRoasterResponse["companyTierFit"] = "Borderline OA Screen";
+  let roastHeadline = "Borderline Shortlist: Good skills listed, but smells like ChatGPT wrote it without real project evidence.";
+
+  if (computedScore >= 85) {
+    companyTierFit = "Day-1 Recruiter Call";
+    roastHeadline = `Day-1 Candidate for ${profile.name}: Strong technical alignment with measurable business metrics.`;
+  } else if (computedScore >= 72) {
+    companyTierFit = "Strong Campus Shortlist";
+    roastHeadline = `Competitive for ${profile.name}, but missing critical high-signal keywords and impact quantification.`;
+  } else if (computedScore < 55) {
+    companyTierFit = "Needs Overhaul";
+    roastHeadline = `ATS Screen Danger Zone: High probability of automatic rejection by ${profile.name} recruitment filters.`;
+  }
+
+  const roastPoints = [
+    fluffyBulletsCount > 0
+      ? `You used ${fluffyBulletsCount} generic buzzwords like "${fluffFound.slice(0, 2).join('", "')}". Recruiters roll their eyes at these; replace them with measurable facts.`
+      : "Good job avoiding generic buzzwords, but your action verbs could pack significantly more engineering punch.",
+    quantifiedBulletsCount === 0
+      ? "Zero metrics detected in your projects. If you didn't quantify speed, scale, or user counts, recruiters assume the project only ran on your localhost for 5 minutes."
+      : `Detected ${quantifiedBulletsCount} metric indicators. Strengthen them by explicitly connecting the metric to business or system outcomes (e.g. 'reduced P99 latency from 450ms to 85ms').`,
+    missingCrucialKeywords.length > 0
+      ? `${profile.name} recruiters specifically filter for: ${missingCrucialKeywords.slice(0, 3).join(", ")}. Their complete absence drops your keyword ATS weight.`
+      : `High keyword coverage for ${profile.name}! Ensure your bullet points explain HOW you applied these tools rather than keyword-stuffing.`,
+  ];
+
+  const threeCriticalFixes = [
+    missingCrucialKeywords.length > 0
+      ? `Inject ${missingCrucialKeywords.slice(0, 2).join(" and ")} into your strongest project description or technical summary.`
+      : "Quantify the scale of your primary project (e.g. database row counts, concurrent users, or test coverage percentage).",
+    "Replace passive phrases ('Assisted in', 'Worked on') with strong ownership verbs ('Architected', 'Engineered', 'Optimized', 'Decommissioned').",
+    `Tailor your headline and summary to specifically reference ${profile.name}'s engineering stack (${profile.expectedKeywords.slice(0, 3).join(", ")}).`,
+  ];
+
+  return {
+    overallAtsScore: computedScore,
+    companyTierFit,
+    targetCompany: input.targetCompany,
+    targetRole: input.targetRole,
+    roastHeadline,
+    roastPoints,
+    companySpecificAlignment: {
+      expectedKeywords: profile.expectedKeywords,
+      foundKeywords,
+      missingCrucialKeywords,
+      cultureAlignmentFeedback: profile.cultureNotes,
+    },
+    metricRoast: {
+      quantifiedBulletsCount,
+      fluffyBulletsCount,
+      verdict:
+        quantifiedBulletsCount > 3
+          ? "Strong metric density. Keep numbers tied directly to architectural improvements."
+          : "Under-quantified. Engineering recruiters evaluate engineers by outcomes, not effort.",
+    },
+    threeCriticalFixes: threeCriticalFixes as [string, string, string],
+    socialShareText: `My resume scored ${computedScore}/100 for ${input.targetCompany} ${input.targetRole} on CodeOrbit ATS Roaster 🔥! Target: #CodeOrbitReady`,
+    provider: "codeorbit-deterministic",
+  };
+};
+
+export const roastResumeWithGemini = async (
+  input: ResumeRoasterInput,
+  viewer?: ViewerContext
+): Promise<ResumeRoasterResponse> => {
+  const fallback = roastResumeDeterministic(input);
+
+  try {
+    const profile = resolveCompanyProfile(input.targetCompany);
+    const sanitizedResume = sanitizePromptInput(input.resumeText, 25_000);
+
+    const response = await callGeminiJson({
+      systemPrompt:
+        "You are CodeOrbit's Senior Staff Engineering Hiring Manager and ATS Roaster for Indian tech campus & fresher hiring. Provide brutal, witty, yet deeply constructive engineering feedback. Return strict JSON adhering to schema.",
+      userPrompt: [
+        `Target Company: ${input.targetCompany} (${profile.cultureNotes})`,
+        `Target Role: ${input.targetRole}`,
+        `Company Core Tech Stack / Expected Keywords: ${profile.expectedKeywords.join(", ")}`,
+        `Candidate Resume Content:\n${sanitizedResume}`,
+        "Evaluate the resume and return JSON with keys: overallAtsScore (0-100), companyTierFit, targetCompany, targetRole, roastHeadline, roastPoints (array of 3-4 witty but constructive points), companySpecificAlignment (expectedKeywords, foundKeywords, missingCrucialKeywords, cultureAlignmentFeedback), metricRoast (quantifiedBulletsCount, fluffyBulletsCount, verdict), threeCriticalFixes (exact 3 actionable fixes), socialShareText, provider.",
+        "companyTierFit must be one of: 'Needs Overhaul', 'Borderline OA Screen', 'Strong Campus Shortlist', 'Day-1 Recruiter Call'.",
+      ].join("\n\n"),
+      schema: resumeRoasterResponseSchema,
+    });
+
+    return {
+      ...response,
+      provider: "gemini",
+    };
+  } catch (error) {
+    console.error("Gemini resume roast failed, using deterministic fallback:", error);
+    return fallback;
+  }
+};
+

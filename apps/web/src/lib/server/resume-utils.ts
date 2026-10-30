@@ -1,5 +1,4 @@
-import mammoth from "mammoth";
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import type { Color, PDFFont, PDFPage } from "pdf-lib";
 import type { ResumeResponse } from "@codeorbit/schema";
 
 const normalizeExtractedText = (value: string) =>
@@ -27,6 +26,9 @@ export const extractResumeText = async (file: File) => {
     mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     extension === "docx"
   ) {
+    const mammoth = (await import("mammoth")).default as unknown as {
+      extractRawText: (options: { buffer: Buffer }) => Promise<{ value: string }>;
+    };
     const result = await mammoth.extractRawText({ buffer });
     return normalizeExtractedText(result.value ?? "");
   }
@@ -47,6 +49,14 @@ export const extractResumeText = async (file: File) => {
   throw new Error("Unsupported file type. Please upload PDF, DOCX, TXT, or MD.");
 };
 
+const sanitizeForPdf = (value: string) =>
+  value
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, "-")
+    .replace(/[^\x00-\x7F]/g, " ");
+
 const drawWrappedText = ({
   page,
   font,
@@ -64,9 +74,10 @@ const drawWrappedText = ({
   x: number;
   y: number;
   maxWidth: number;
-  color: ReturnType<typeof rgb>;
+  color: Color;
 }) => {
-  const words = text.split(/\s+/).filter(Boolean);
+  const safeText = sanitizeForPdf(text);
+  const words = safeText.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let currentLine = "";
 
@@ -105,6 +116,16 @@ const drawWrappedText = ({
 };
 
 export const buildResumePdfBuffer = async (draft: ResumeResponse) => {
+  // Use pre-bundled dist for sub-second cold starts
+  let pdfLib: typeof import("pdf-lib");
+  try {
+    // @ts-expect-error - dist bundle lacks d.ts
+    const bundle = (await import("pdf-lib/dist/pdf-lib.js")) as unknown as { default?: typeof import("pdf-lib") } & typeof import("pdf-lib");
+    pdfLib = bundle.default ?? bundle;
+  } catch {
+    pdfLib = await import("pdf-lib");
+  }
+  const { PDFDocument, StandardFonts, rgb } = pdfLib;
   const pdf = await PDFDocument.create();
   const regularFont = await pdf.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -164,7 +185,7 @@ export const buildResumePdfBuffer = async (draft: ResumeResponse) => {
 
   const drawBullet = (text: string) => {
     ensureSpace(36);
-    page.drawText("\u2022", { x: marginX, y: cursorY, size: 12, font: boldFont, color: ink });
+    page.drawText("-", { x: marginX, y: cursorY, size: 12, font: boldFont, color: ink });
     const heightUsed = drawWrappedText({
       page,
       font: regularFont,
@@ -243,7 +264,7 @@ export const buildResumePdfBuffer = async (draft: ResumeResponse) => {
   });
 
   drawSectionHeading("Skills");
-  drawParagraph(draft.skills.join(" • "));
+  drawParagraph(draft.skills.join(" | "));
 
   drawSectionHeading("Certifications");
   if (draft.certifications.length === 0) {

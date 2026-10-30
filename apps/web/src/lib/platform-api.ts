@@ -25,6 +25,8 @@ import {
   resumeInputSchema,
   resumePdfExportInputSchema,
   resumeResponseSchema,
+  resumeRoasterInputSchema,
+  resumeRoasterResponseSchema,
   submissionReceiptSchema,
   campusBetaWorkspaceSchema,
   campusCohortInterventionSchema,
@@ -53,6 +55,8 @@ import {
   type ProblemListItem,
   type ResumeInput,
   type ResumeResponse,
+  type ResumeRoasterInput,
+  type ResumeRoasterResponse,
   type RunCodeResponse,
   type SubmissionReceipt,
   type UserProfile,
@@ -319,6 +323,10 @@ export const platformApi = {
   async exportResumePdf(input: { draft: ResumeResponse; fileNameHint?: string }): Promise<{ fileName: string; base64Pdf: string }> {
     const payload = resumePdfExportInputSchema.parse(input);
     return postJson("/api/ai/resume/export", payload, exportResumePdfResponseSchema);
+  },
+  async roastResume(input: ResumeRoasterInput): Promise<ResumeRoasterResponse> {
+    const payload = resumeRoasterInputSchema.parse(input);
+    return postJson("/api/ai/resume/roast", payload, resumeRoasterResponseSchema);
   },
   async updateViewerPreferences(input: ViewerPreferencesInput): Promise<ViewerPreferences> {
     const payload = viewerPreferencesInputSchema.parse(input);

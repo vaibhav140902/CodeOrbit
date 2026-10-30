@@ -878,4 +878,46 @@ export type RateLimitStatus = z.infer<typeof rateLimitStatusSchema>;
 export type RateLimitErrorResponse = z.infer<typeof rateLimitErrorResponseSchema>;
 export type CompanyInterviewContext = z.infer<typeof companyInterviewContextSchema>;
 
+export const resumeRoasterInputSchema = z.object({
+  resumeText: z.string().min(30).max(50_000),
+  targetCompany: z.string().min(1).max(100),
+  targetRole: z.string().min(1).max(100),
+  candidateName: z.string().max(100).optional(),
+});
+
+export const roasterCompanyTierFitSchema = z.enum([
+  "Needs Overhaul",
+  "Borderline OA Screen",
+  "Strong Campus Shortlist",
+  "Day-1 Recruiter Call",
+]);
+
+export const resumeRoasterResponseSchema = z.object({
+  overallAtsScore: z.number().int().min(0).max(100),
+  companyTierFit: roasterCompanyTierFitSchema,
+  targetCompany: z.string(),
+  targetRole: z.string(),
+  roastHeadline: z.string(),
+  roastPoints: z.array(z.string()).min(3),
+  companySpecificAlignment: z.object({
+    expectedKeywords: z.array(z.string()),
+    foundKeywords: z.array(z.string()),
+    missingCrucialKeywords: z.array(z.string()),
+    cultureAlignmentFeedback: z.string(),
+  }),
+  metricRoast: z.object({
+    quantifiedBulletsCount: z.number().int().nonnegative(),
+    fluffyBulletsCount: z.number().int().nonnegative(),
+    verdict: z.string(),
+  }),
+  threeCriticalFixes: z.array(z.string()).length(3),
+  socialShareText: z.string(),
+  provider: z.string(),
+});
+
+export type ResumeRoasterInput = z.infer<typeof resumeRoasterInputSchema>;
+export type RoasterCompanyTierFit = z.infer<typeof roasterCompanyTierFitSchema>;
+export type ResumeRoasterResponse = z.infer<typeof resumeRoasterResponseSchema>;
+
+
 
