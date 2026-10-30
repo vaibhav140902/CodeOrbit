@@ -8,6 +8,7 @@
   ],
   "exports": {
     ".": "./src/index.ts",
+    "./mock-problems": "./src/data/mock-problems.ts",
     "./styles.css": "./src/styles/brand.css"
   },
   "peerDependencies": {

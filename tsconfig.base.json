@@ -12,6 +12,7 @@
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
@@ -20,6 +21,9 @@
     "paths": {
       "@codeorbit/ui": [
         "packages/ui/src/index.ts"
+      ],
+      "@codeorbit/ui/mock-problems": [
+        "packages/ui/src/data/mock-problems.ts"
       ],
       "@codeorbit/ui/*": [
         "packages/ui/src/*"

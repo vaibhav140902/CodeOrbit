@@ -2,7 +2,7 @@ import {
   getBillingSummaryData,
   getViewerContextFromHeaders,
   type ViewerContext,
-} from "./platform-data";
+} from "./platform-data.ts";
 
 export class AccessControlError extends Error {
   readonly status: number;

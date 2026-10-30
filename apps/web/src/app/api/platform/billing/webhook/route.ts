@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { processSuccessfulPaymentData } from "@/lib/server/platform-data";
+import {
+  processSubscriptionCancellationData,
+  processSuccessfulPaymentData,
+} from "@/lib/server/platform-data";
 import { type PaidBillingPlanId } from "@codeorbit/schema";
 
 export const runtime = "nodejs";
@@ -50,6 +53,7 @@ export async function POST(request: NextRequest) {
             currency?: string;
             status?: string;
             method?: string;
+            email?: string;
             notes?: Record<string, string>;
           };
         };
@@ -62,27 +66,63 @@ export async function POST(request: NextRequest) {
             notes?: Record<string, string>;
           };
         };
+        subscription?: {
+          entity?: {
+            id?: string;
+            plan_id?: string;
+            status?: string;
+            current_end?: number;
+            notes?: Record<string, string>;
+          };
+        };
+        refund?: {
+          entity?: {
+            id?: string;
+            payment_id?: string;
+            amount?: number;
+            status?: string;
+            notes?: Record<string, string>;
+          };
+        };
       };
     };
 
     const eventName = event.event ?? "unknown";
     console.log(`Razorpay webhook received: [${eventName}]`);
 
-    // Handle payment.captured or order.paid
-    if (eventName === "payment.captured" || eventName === "order.paid") {
-      const paymentEntity = event.payload?.payment?.entity;
-      const orderEntity = event.payload?.order?.entity;
+    const paymentEntity = event.payload?.payment?.entity;
+    const orderEntity = event.payload?.order?.entity;
+    const subscriptionEntity = event.payload?.subscription?.entity;
+    const refundEntity = event.payload?.refund?.entity;
 
-      const orderId = paymentEntity?.order_id || orderEntity?.id;
-      const paymentId = paymentEntity?.id || `webhook-${orderId}`;
+    const notes =
+      paymentEntity?.notes ||
+      orderEntity?.notes ||
+      subscriptionEntity?.notes ||
+      refundEntity?.notes ||
+      {};
+
+    const uid = notes.uid || notes.userId || notes.user_id;
+    const email =
+      notes.email ||
+      notes.customerEmail ||
+      notes.customer_email ||
+      paymentEntity?.email;
+
+    // 1. Activation & Renewal Events
+    if (
+      eventName === "payment.captured" ||
+      eventName === "order.paid" ||
+      eventName === "subscription.activated" ||
+      eventName === "subscription.charged"
+    ) {
+      const orderId = paymentEntity?.order_id || orderEntity?.id || subscriptionEntity?.id;
+      const paymentId = paymentEntity?.id || `sub-charge-${orderId}`;
       const amountPaise = paymentEntity?.amount || orderEntity?.amount || 0;
       const currency = paymentEntity?.currency || orderEntity?.currency || "INR";
       const method = paymentEntity?.method || "unknown";
 
-      const notes = paymentEntity?.notes || orderEntity?.notes || {};
-      const uid = notes.uid;
-      const email = notes.email;
-      const rawPlanId = notes.planId;
+      const rawPlanId = notes.planId || notes.plan_id;
       const planId: PaidBillingPlanId =
         rawPlanId === "premium-lifetime" ? "premium-lifetime" : "premium-monthly";
 
@@ -104,6 +144,31 @@ export async function POST(request: NextRequest) {
         console.log(`Successfully processed [${eventName}] for user: ${email || uid}`);
       } else {
         console.warn(`Webhook notice: missing orderId or user notes in event [${eventName}]`);
+      }
+    }
+
+    // 2. Cancellation & Refund Events
+    if (
+      eventName === "payment.refunded" ||
+      eventName === "refund.processed" ||
+      eventName === "subscription.cancelled" ||
+      eventName === "subscription.halted"
+    ) {
+      const isRefund = eventName.includes("refund");
+      const status = isRefund ? "refunded" : "cancelled";
+      const orderId = paymentEntity?.order_id || refundEntity?.payment_id || subscriptionEntity?.id;
+      const paymentId = refundEntity?.id || paymentEntity?.id;
+
+      if (uid || email) {
+        await processSubscriptionCancellationData({
+          orderId,
+          paymentId,
+          uid,
+          email,
+          status,
+          reason: `Razorpay webhook event: ${eventName}`,
+        });
+        console.log(`Successfully recorded subscription [${status}] for user: ${email || uid}`);
       }
     }
 

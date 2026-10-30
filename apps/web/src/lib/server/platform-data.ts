@@ -6,7 +6,7 @@ import {
   getGooglePublicCerts,
   verifyFirebaseToken,
   type ViewerContext,
-} from "./auth-guard";
+} from "./auth-guard.ts";
 import {
   type ActivitySummary,
   type AdminSummary,
@@ -31,7 +31,7 @@ import {
   type UserProfile,
   type ViewerPreferences,
 } from "@codeorbit/schema";
-import { getProblemById, mockProblems } from "@codeorbit/ui";
+import { getProblemById, mockProblems } from "@codeorbit/ui/mock-problems";
 
 const SUPABASE_URL = (process.env.SUPABASE_URL ?? "").trim().replace(/\/+$/, "");
 const SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
@@ -708,20 +708,44 @@ export const getBillingSummaryData = async (viewer: ViewerContext): Promise<Bill
       return freeBillingSummary;
     }
 
-    const activeSub = store.subscriptions.find(
-      (s) => s.user_id === user.id && s.status === "active"
-    );
-    if (!activeSub) {
+    const userSubs = store.subscriptions.filter((s) => s.user_id === user.id);
+    const latestSub = userSubs.length > 0 ? userSubs[userSubs.length - 1] : null;
+
+    if (!latestSub) {
       return freeBillingSummary;
     }
 
-    const planId = activeSub.plan_code === "premium-lifetime" ? "premium-lifetime" : "premium-monthly";
+    if (latestSub.status !== "active") {
+      return {
+        planId: "free",
+        planName: "Free",
+        status: latestSub.status ?? "inactive",
+        premiumActive: false,
+        validUntilIso: latestSub.current_period_end ?? null,
+      };
+    }
+
+    const isLocalExpired = latestSub.current_period_end
+      ? new Date(latestSub.current_period_end).getTime() < Date.now()
+      : false;
+
+    if (isLocalExpired) {
+      return {
+        planId: "free",
+        planName: "Free",
+        status: "expired",
+        premiumActive: false,
+        validUntilIso: latestSub.current_period_end ?? null,
+      };
+    }
+
+    const planId = latestSub.plan_code === "premium-lifetime" ? "premium-lifetime" : "premium-monthly";
     return {
       planId,
       planName: planId === "premium-lifetime" ? "Interview Sprint" : "Pro",
-      status: activeSub.status,
+      status: latestSub.status,
       premiumActive: true,
-      validUntilIso: activeSub.current_period_end ?? null,
+      validUntilIso: latestSub.current_period_end ?? null,
     };
   }
 
@@ -741,8 +765,32 @@ export const getBillingSummaryData = async (viewer: ViewerContext): Promise<Bill
     });
 
     const row = normalizeSingle(response.data);
-    if (!row || row.status !== "active") {
+    if (!row) {
       return freeBillingSummary;
+    }
+
+    if (row.status !== "active") {
+      return {
+        planId: "free",
+        planName: "Free",
+        status: row.status ?? "inactive",
+        premiumActive: false,
+        validUntilIso: row.current_period_end ?? null,
+      };
+    }
+
+    const isDbExpired = row.current_period_end
+      ? new Date(row.current_period_end).getTime() < Date.now()
+      : false;
+
+    if (isDbExpired) {
+      return {
+        planId: "free",
+        planName: "Free",
+        status: "expired",
+        premiumActive: false,
+        validUntilIso: row.current_period_end ?? null,
+      };
     }
 
     const planId = row.plan_code === "premium-lifetime" ? "premium-lifetime" : "premium-monthly";
@@ -1664,6 +1712,74 @@ export const processSuccessfulPaymentData = async (input: {
     planId,
     validUntil: validUntilIso,
   };
+};
+
+export const processSubscriptionCancellationData = async (input: {
+  orderId?: string;
+  paymentId?: string;
+  uid?: string;
+  email?: string;
+  status: "cancelled" | "refunded";
+  reason?: string;
+}): Promise<{ status: "cancelled" | "refunded"; success: boolean }> => {
+  const targetViewer: ViewerContext = {
+    uid: input.uid,
+    email: input.email,
+  };
+
+  const nowIso = new Date().toISOString();
+
+  if (hasSupabase()) {
+    try {
+      const user = await loadUserRow(targetViewer);
+      if (user) {
+        await requestSupabase("subscriptions", {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: {
+            user_id: user.id,
+            plan_code: "free",
+            status: input.status,
+            provider: "razorpay",
+            current_period_end: nowIso,
+            created_at: nowIso,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to record subscription cancellation in Supabase:", err);
+    }
+  } else {
+    try {
+      const store = readLocalStorage();
+      const user = store.users.find(
+        (u) =>
+          (input.uid && u.firebase_uid === input.uid) ||
+          (input.email && u.email.toLowerCase() === input.email.toLowerCase())
+      );
+      if (user) {
+        const subIdx = store.subscriptions.findIndex((s) => s.user_id === user.id);
+        if (subIdx >= 0) {
+          store.subscriptions[subIdx].status = input.status;
+          store.subscriptions[subIdx].current_period_end = nowIso;
+        } else {
+          store.subscriptions.push({
+            user_id: user.id,
+            plan_code: "free",
+            status: input.status,
+            provider: "razorpay",
+            current_period_end: nowIso,
+            created_at: nowIso,
+          });
+        }
+        writeLocalStorage(store);
+      }
+    } catch (localErr) {
+      console.warn("Failed to record subscription cancellation in local store:", localErr);
+    }
+  }
+
+  return { status: input.status, success: true };
 };
 
 export const verifyBillingPaymentData = async (
