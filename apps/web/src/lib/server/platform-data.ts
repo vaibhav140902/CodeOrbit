@@ -7,11 +7,21 @@ import {
   type BillingOrder,
   type BillingSummary,
   type BillingVerification,
+  type Contest,
+  type ContestInput,
   type DashboardSummary,
+  type DpdpConsentInput,
+  type DpdpConsentLog,
   type LeaderboardSummary,
   type PaidBillingPlanId,
   type ProblemDetail,
   type ProblemListItem,
+  type ProctorEvent,
+  type ProctorEventInput,
+  type Tenant,
+  type TenantInput,
+  type TenantMembership,
+  type TenantMembershipInput,
   type UserProfile,
   type ViewerPreferences,
 } from "@codeorbit/schema";
@@ -71,6 +81,70 @@ interface SupabaseSubscriptionRow {
   plan_code?: string;
   status: string;
   current_period_end?: string | null;
+}
+
+interface SupabaseTenantRow {
+  id: string;
+  slug: string;
+  name: string;
+  tier: "tier-1" | "tier-2" | "tier-3";
+  state: string;
+  contact_tpo_name: string;
+  contact_tpo_email: string;
+  contact_tpo_phone?: string | null;
+  plan_status: "pilot" | "active" | "churned";
+  max_students: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SupabaseTenantMembershipRow {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  roll_number?: string | null;
+  department: string;
+  batch_year: number;
+  role: "student" | "tpo_admin" | "faculty";
+  verified: boolean;
+  created_at: string;
+}
+
+interface SupabaseContestRow {
+  id: string;
+  tenant_id?: string | null;
+  title: string;
+  slug: string;
+  description?: string | null;
+  problem_ids: string[];
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  is_published: boolean;
+  created_by?: string | null;
+  created_at: string;
+}
+
+interface SupabaseProctorEventRow {
+  id: string;
+  contest_id: string;
+  user_id: string;
+  event_type: "tab_blur" | "fullscreen_exit" | "paste_detected" | "devtools_opened";
+  metadata: Record<string, unknown>;
+  occurred_at: string;
+}
+
+interface SupabaseDpdpConsentRow {
+  id: string;
+  user_id: string;
+  consent_version: string;
+  is_under_18: boolean;
+  parent_guardian_email?: string | null;
+  purposes_accepted: string[];
+  ip_address?: string | null;
+  user_agent?: string | null;
+  consented_at: string;
+  revoked_at?: string | null;
 }
 
 const freeBillingSummary: BillingSummary = {
@@ -489,12 +563,81 @@ interface LocalPaymentRecord {
   created_at: string;
 }
 
+interface LocalTenantRecord {
+  id: string;
+  slug: string;
+  name: string;
+  tier: "tier-1" | "tier-2" | "tier-3";
+  state: string;
+  contact_tpo_name: string;
+  contact_tpo_email: string;
+  contact_tpo_phone?: string | null;
+  plan_status: "pilot" | "active" | "churned";
+  max_students: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface LocalTenantMembershipRecord {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  roll_number?: string | null;
+  department: string;
+  batch_year: number;
+  role: "student" | "tpo_admin" | "faculty";
+  verified: boolean;
+  created_at: string;
+}
+
+interface LocalContestRecord {
+  id: string;
+  tenant_id?: string | null;
+  title: string;
+  slug: string;
+  description?: string | null;
+  problem_ids: string[];
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  is_published: boolean;
+  created_by?: string | null;
+  created_at: string;
+}
+
+interface LocalProctorEventRecord {
+  id: string;
+  contest_id: string;
+  user_id: string;
+  event_type: "tab_blur" | "fullscreen_exit" | "paste_detected" | "devtools_opened";
+  metadata: Record<string, unknown>;
+  occurred_at: string;
+}
+
+interface LocalDpdpConsentRecord {
+  id: string;
+  user_id: string;
+  consent_version: string;
+  is_under_18: boolean;
+  parent_guardian_email?: string | null;
+  purposes_accepted: string[];
+  ip_address?: string | null;
+  user_agent?: string | null;
+  consented_at: string;
+  revoked_at?: string | null;
+}
+
 interface LocalStorageSchema {
   users: LocalUserRecord[];
   submissions: LocalSubmissionRecord[];
   user_progress: LocalProgressRecord[];
   subscriptions: LocalSubscriptionRecord[];
   payments: LocalPaymentRecord[];
+  tenants: LocalTenantRecord[];
+  tenant_memberships: LocalTenantMembershipRecord[];
+  contests: LocalContestRecord[];
+  proctor_events: LocalProctorEventRecord[];
+  dpdp_consent_logs: LocalDpdpConsentRecord[];
 }
 
 const getLocalStoragePath = () => {
@@ -517,6 +660,11 @@ const readLocalStorage = (): LocalStorageSchema => {
         user_progress: parsed.user_progress ?? [],
         subscriptions: parsed.subscriptions ?? [],
         payments: parsed.payments ?? [],
+        tenants: parsed.tenants ?? [],
+        tenant_memberships: parsed.tenant_memberships ?? [],
+        contests: parsed.contests ?? [],
+        proctor_events: parsed.proctor_events ?? [],
+        dpdp_consent_logs: parsed.dpdp_consent_logs ?? [],
       };
     }
   } catch (err) {
@@ -528,6 +676,11 @@ const readLocalStorage = (): LocalStorageSchema => {
     user_progress: [],
     subscriptions: [],
     payments: [],
+    tenants: [],
+    tenant_memberships: [],
+    contests: [],
+    proctor_events: [],
+    dpdp_consent_logs: [],
   };
 };
 
@@ -1716,4 +1869,379 @@ export const recordInterviewSessionData = async (
     console.warn("Failed to record interview session to Supabase:", error);
   }
 };
+
+export const recordDpdpConsent = async (
+  input: DpdpConsentInput,
+  viewer?: ViewerContext,
+  ip?: string,
+  userAgent?: string
+): Promise<DpdpConsentLog> => {
+  const now = new Date().toISOString();
+  const consentId = randomUUID();
+  let userId = viewer?.uid || "anonymous";
+
+  if (hasSupabase() && viewer) {
+    try {
+      const user = await loadUserRow(viewer);
+      if (user) {
+        userId = user.id;
+        await requestSupabase("dpdp_consent_logs", {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: {
+            id: consentId,
+            user_id: user.id,
+            consent_version: input.consentVersion || "2026.1",
+            is_under_18: input.isUnder18,
+            parent_guardian_email: input.parentGuardianEmail || null,
+            purposes_accepted: input.purposesAccepted,
+            ip_address: ip || null,
+            user_agent: userAgent || null,
+            consented_at: now,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("Notice: could not persist DPDP consent to Supabase:", err);
+    }
+  }
+
+  const store = readLocalStorage();
+  const localUser = viewer ? ensureLocalUser(viewer, store) : null;
+  if (localUser) {
+    userId = localUser.id;
+  }
+  const record: LocalDpdpConsentRecord = {
+    id: consentId,
+    user_id: userId,
+    consent_version: input.consentVersion || "2026.1",
+    is_under_18: input.isUnder18,
+    parent_guardian_email: input.parentGuardianEmail || null,
+    purposes_accepted: input.purposesAccepted,
+    ip_address: ip || null,
+    user_agent: userAgent || null,
+    consented_at: now,
+    revoked_at: null,
+  };
+  store.dpdp_consent_logs.unshift(record);
+  writeLocalStorage(store);
+
+  return {
+    id: consentId,
+    userId,
+    consentVersion: input.consentVersion || "2026.1",
+    isUnder18: input.isUnder18,
+    parentGuardianEmail: input.parentGuardianEmail,
+    purposesAccepted: input.purposesAccepted,
+    ipAddress: ip,
+    userAgent,
+    consentedAtIso: now,
+  };
+};
+
+export const getLatestDpdpConsent = async (userId: string): Promise<DpdpConsentLog | null> => {
+  if (hasSupabase()) {
+    try {
+      const res = await requestSupabase<SupabaseDpdpConsentRow[]>("dpdp_consent_logs", {
+        params: {
+          select: "*",
+          user_id: `eq.${userId}`,
+          order: "consented_at.desc",
+          limit: 1,
+        },
+      });
+      const row = normalizeSingle(res.data);
+      if (row) {
+        return {
+          id: row.id,
+          userId: row.user_id,
+          consentVersion: row.consent_version,
+          isUnder18: row.is_under_18,
+          parentGuardianEmail: row.parent_guardian_email || undefined,
+          purposesAccepted: row.purposes_accepted,
+          ipAddress: row.ip_address || undefined,
+          userAgent: row.user_agent || undefined,
+          consentedAtIso: row.consented_at,
+          revokedAtIso: row.revoked_at || undefined,
+        };
+      }
+    } catch (err) {
+      console.warn("Notice: could not query DPDP consent from Supabase:", err);
+    }
+  }
+
+  const store = readLocalStorage();
+  const record = store.dpdp_consent_logs.find((c) => c.user_id === userId);
+  if (!record) return null;
+  return {
+    id: record.id,
+    userId: record.user_id,
+    consentVersion: record.consent_version,
+    isUnder18: record.is_under_18,
+    parentGuardianEmail: record.parent_guardian_email || undefined,
+    purposesAccepted: record.purposes_accepted,
+    ipAddress: record.ip_address || undefined,
+    userAgent: record.user_agent || undefined,
+    consentedAtIso: record.consented_at,
+    revokedAtIso: record.revoked_at || undefined,
+  };
+};
+
+export const recordProctorEvent = async (
+  input: ProctorEventInput,
+  viewer?: ViewerContext
+): Promise<ProctorEvent> => {
+  const now = new Date().toISOString();
+  const eventId = randomUUID();
+  let userId = viewer?.uid || "anonymous";
+
+  if (hasSupabase() && viewer) {
+    try {
+      const user = await loadUserRow(viewer);
+      if (user) {
+        userId = user.id;
+        await requestSupabase("proctor_events", {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: {
+            id: eventId,
+            contest_id: input.contestId,
+            user_id: user.id,
+            event_type: input.eventType,
+            metadata: input.metadata || {},
+            occurred_at: now,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("Notice: could not persist proctor event to Supabase:", err);
+    }
+  }
+
+  const store = readLocalStorage();
+  const localUser = viewer ? ensureLocalUser(viewer, store) : null;
+  if (localUser) {
+    userId = localUser.id;
+  }
+  const record: LocalProctorEventRecord = {
+    id: eventId,
+    contest_id: input.contestId,
+    user_id: userId,
+    event_type: input.eventType,
+    metadata: input.metadata || {},
+    occurred_at: now,
+  };
+  store.proctor_events.unshift(record);
+  writeLocalStorage(store);
+
+  return {
+    id: eventId,
+    contestId: input.contestId,
+    userId,
+    eventType: input.eventType,
+    metadata: (input.metadata as Record<string, unknown>) || {},
+    occurredAtIso: now,
+  };
+};
+
+export const listContestsData = async (tenantId?: string): Promise<Contest[]> => {
+  if (hasSupabase()) {
+    try {
+      const params: Record<string, string | number> = {
+        select: "*",
+        is_published: "eq.true",
+        order: "start_time.asc",
+      };
+      if (tenantId) {
+        params.tenant_id = `eq.${tenantId}`;
+      }
+      const res = await requestSupabase<SupabaseContestRow[]>("contests", { params });
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        return res.data.map((c) => ({
+          id: c.id,
+          tenantId: c.tenant_id || undefined,
+          title: c.title,
+          slug: c.slug,
+          description: c.description || undefined,
+          problemIds: Array.isArray(c.problem_ids) ? c.problem_ids : [],
+          startTimeIso: c.start_time,
+          endTimeIso: c.end_time,
+          durationMinutes: c.duration_minutes,
+          isPublished: c.is_published,
+          createdBy: c.created_by || undefined,
+          createdAtIso: c.created_at,
+        }));
+      }
+    } catch (err) {
+      console.warn("Notice: could not fetch contests from Supabase:", err);
+    }
+  }
+
+  const store = readLocalStorage();
+  let list = store.contests.filter((c) => c.is_published);
+  if (tenantId) {
+    list = list.filter((c) => c.tenant_id === tenantId);
+  }
+  return list.map((c) => ({
+    id: c.id,
+    tenantId: c.tenant_id || undefined,
+    title: c.title,
+    slug: c.slug,
+    description: c.description || undefined,
+    problemIds: c.problem_ids,
+    startTimeIso: c.start_time,
+    endTimeIso: c.end_time,
+    durationMinutes: c.duration_minutes,
+    isPublished: c.is_published,
+    createdBy: c.created_by || undefined,
+    createdAtIso: c.created_at,
+  }));
+};
+
+export const getContestData = async (slug: string): Promise<Contest | null> => {
+  if (hasSupabase()) {
+    try {
+      const res = await requestSupabase<SupabaseContestRow[]>("contests", {
+        params: {
+          select: "*",
+          slug: `eq.${slug}`,
+          limit: 1,
+        },
+      });
+      const c = normalizeSingle(res.data);
+      if (c) {
+        return {
+          id: c.id,
+          tenantId: c.tenant_id || undefined,
+          title: c.title,
+          slug: c.slug,
+          description: c.description || undefined,
+          problemIds: Array.isArray(c.problem_ids) ? c.problem_ids : [],
+          startTimeIso: c.start_time,
+          endTimeIso: c.end_time,
+          durationMinutes: c.duration_minutes,
+          isPublished: c.is_published,
+          createdBy: c.created_by || undefined,
+          createdAtIso: c.created_at,
+        };
+      }
+    } catch (err) {
+      console.warn("Notice: could not get contest from Supabase:", err);
+    }
+  }
+
+  const store = readLocalStorage();
+  const c = store.contests.find((item) => item.slug === slug);
+  if (!c) return null;
+  return {
+    id: c.id,
+    tenantId: c.tenant_id || undefined,
+    title: c.title,
+    slug: c.slug,
+    description: c.description || undefined,
+    problemIds: c.problem_ids,
+    startTimeIso: c.start_time,
+    endTimeIso: c.end_time,
+    durationMinutes: c.duration_minutes,
+    isPublished: c.is_published,
+    createdBy: c.created_by || undefined,
+    createdAtIso: c.created_at,
+  };
+};
+
+export const getTenantData = async (slug: string): Promise<Tenant | null> => {
+  if (hasSupabase()) {
+    try {
+      const res = await requestSupabase<SupabaseTenantRow[]>("tenants", {
+        params: {
+          select: "*",
+          slug: `eq.${slug}`,
+          limit: 1,
+        },
+      });
+      const t = normalizeSingle(res.data);
+      if (t) {
+        return {
+          id: t.id,
+          slug: t.slug,
+          name: t.name,
+          tier: t.tier,
+          state: t.state,
+          contactTpoName: t.contact_tpo_name,
+          contactTpoEmail: t.contact_tpo_email,
+          contactTpoPhone: t.contact_tpo_phone || undefined,
+          planStatus: t.plan_status,
+          maxStudents: t.max_students,
+          createdAtIso: t.created_at,
+          updatedAtIso: t.updated_at,
+        };
+      }
+    } catch (err) {
+      console.warn("Notice: could not get tenant from Supabase:", err);
+    }
+  }
+
+  const store = readLocalStorage();
+  const t = store.tenants.find((item) => item.slug === slug);
+  if (!t) return null;
+  return {
+    id: t.id,
+    slug: t.slug,
+    name: t.name,
+    tier: t.tier,
+    state: t.state,
+    contactTpoName: t.contact_tpo_name,
+    contactTpoEmail: t.contact_tpo_email,
+    contactTpoPhone: t.contact_tpo_phone || undefined,
+    planStatus: t.plan_status,
+    maxStudents: t.max_students,
+    createdAtIso: t.created_at,
+    updatedAtIso: t.updated_at,
+  };
+};
+
+export const listTenantMemberships = async (tenantId: string): Promise<TenantMembership[]> => {
+  if (hasSupabase()) {
+    try {
+      const res = await requestSupabase<SupabaseTenantMembershipRow[]>("tenant_memberships", {
+        params: {
+          select: "*",
+          tenant_id: `eq.${tenantId}`,
+          order: "created_at.desc",
+        },
+      });
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        return res.data.map((m) => ({
+          id: m.id,
+          tenantId: m.tenant_id,
+          userId: m.user_id,
+          rollNumber: m.roll_number || undefined,
+          department: m.department,
+          batchYear: m.batch_year,
+          role: m.role,
+          verified: m.verified,
+          createdAtIso: m.created_at,
+        }));
+      }
+    } catch (err) {
+      console.warn("Notice: could not list tenant memberships from Supabase:", err);
+    }
+  }
+
+  const store = readLocalStorage();
+  return store.tenant_memberships
+    .filter((m) => m.tenant_id === tenantId)
+    .map((m) => ({
+      id: m.id,
+      tenantId: m.tenant_id,
+      userId: m.user_id,
+      rollNumber: m.roll_number || undefined,
+      department: m.department,
+      batchYear: m.batch_year,
+      role: m.role,
+      verified: m.verified,
+      createdAtIso: m.created_at,
+    }));
+};
+
 

@@ -584,6 +584,123 @@ export const adminContentQueueItemSchema = z.object({
   updatedAtIso: z.string().datetime(),
 });
 
+// Multi-Tenancy, Contests & DPDP Compliance (0004_tenancy_and_dpdp)
+export const tenantTierSchema = z.enum(["tier-1", "tier-2", "tier-3"]);
+export const tenantPlanStatusSchema = z.enum(["pilot", "active", "churned"]);
+
+export const tenantSchema = z.object({
+  id: z.string().min(1),
+  slug: slugSchema,
+  name: z.string().min(1),
+  tier: tenantTierSchema,
+  state: z.string().min(1),
+  contactTpoName: z.string().min(1),
+  contactTpoEmail: z.string().email(),
+  contactTpoPhone: z.string().optional(),
+  planStatus: tenantPlanStatusSchema,
+  maxStudents: z.number().int().positive(),
+  createdAtIso: z.string().datetime(),
+  updatedAtIso: z.string().datetime(),
+});
+
+export const tenantInputSchema = z.object({
+  slug: slugSchema,
+  name: z.string().min(1),
+  tier: tenantTierSchema.default("tier-3"),
+  state: z.string().min(1).default("UP"),
+  contactTpoName: z.string().min(1),
+  contactTpoEmail: z.string().email(),
+  contactTpoPhone: z.string().optional(),
+  planStatus: tenantPlanStatusSchema.default("pilot"),
+  maxStudents: z.number().int().positive().default(1500),
+});
+
+export const tenantMemberRoleSchema = z.enum(["student", "tpo_admin", "faculty"]);
+
+export const tenantMembershipSchema = z.object({
+  id: z.string().min(1),
+  tenantId: z.string().min(1),
+  userId: z.string().min(1),
+  rollNumber: z.string().optional(),
+  department: z.string().min(1),
+  batchYear: z.number().int().positive(),
+  role: tenantMemberRoleSchema,
+  verified: z.boolean(),
+  createdAtIso: z.string().datetime(),
+});
+
+export const tenantMembershipInputSchema = z.object({
+  tenantId: z.string().min(1),
+  rollNumber: z.string().max(50).optional(),
+  department: z.string().min(1).max(50).default("CSE"),
+  batchYear: z.number().int().positive().default(2026),
+  role: tenantMemberRoleSchema.default("student"),
+});
+
+export const contestSchema = z.object({
+  id: z.string().min(1),
+  tenantId: z.string().nullable().optional(),
+  title: z.string().min(1),
+  slug: slugSchema,
+  description: z.string().optional(),
+  problemIds: z.array(z.string().min(1)),
+  startTimeIso: z.string().datetime(),
+  endTimeIso: z.string().datetime(),
+  durationMinutes: z.number().int().positive(),
+  isPublished: z.boolean(),
+  createdBy: z.string().optional(),
+  createdAtIso: z.string().datetime(),
+});
+
+export const contestInputSchema = z.object({
+  tenantId: z.string().optional(),
+  title: z.string().min(1).max(120),
+  slug: slugSchema,
+  description: z.string().max(2000).optional(),
+  problemIds: z.array(z.string().min(1)).min(1),
+  startTimeIso: z.string().datetime(),
+  endTimeIso: z.string().datetime(),
+  durationMinutes: z.number().int().positive().default(60),
+  isPublished: z.boolean().default(false),
+});
+
+export const proctorEventTypeSchema = z.enum(["tab_blur", "fullscreen_exit", "paste_detected", "devtools_opened"]);
+
+export const proctorEventSchema = z.object({
+  id: z.string().min(1),
+  contestId: z.string().min(1),
+  userId: z.string().min(1),
+  eventType: proctorEventTypeSchema,
+  metadata: z.record(z.string(), z.unknown()).default({}),
+  occurredAtIso: z.string().datetime(),
+});
+
+export const proctorEventInputSchema = z.object({
+  contestId: z.string().min(1),
+  eventType: proctorEventTypeSchema,
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const dpdpConsentLogSchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  consentVersion: z.string().min(1),
+  isUnder18: z.boolean(),
+  parentGuardianEmail: z.string().email().optional(),
+  purposesAccepted: z.array(z.string().min(1)),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  consentedAtIso: z.string().datetime(),
+  revokedAtIso: z.string().datetime().nullable().optional(),
+});
+
+export const dpdpConsentInputSchema = z.object({
+  consentVersion: z.string().min(1).default("2026.1"),
+  isUnder18: z.boolean().default(false),
+  parentGuardianEmail: z.string().email().optional(),
+  purposesAccepted: z.array(z.string().min(1)).min(1).default(["ai_coaching", "tpo_reporting", "ats_analysis"]),
+});
+
 export type ProblemDifficulty = z.infer<typeof problemDifficultySchema>;
 export type WorkspaceRole = z.infer<typeof workspaceRoleSchema>;
 export type ProblemListItem = z.infer<typeof problemListItemSchema>;
@@ -656,3 +773,18 @@ export type ResourceItem = z.infer<typeof resourceItemSchema>;
 export type FeatureFlag = z.infer<typeof featureFlagSchema>;
 export type AdminContentQueueItem = z.infer<typeof adminContentQueueItemSchema>;
 export type WorkspaceRoleUpdateInput = z.infer<typeof workspaceRoleUpdateInputSchema>;
+export type TenantTier = z.infer<typeof tenantTierSchema>;
+export type TenantPlanStatus = z.infer<typeof tenantPlanStatusSchema>;
+export type Tenant = z.infer<typeof tenantSchema>;
+export type TenantInput = z.infer<typeof tenantInputSchema>;
+export type TenantMemberRole = z.infer<typeof tenantMemberRoleSchema>;
+export type TenantMembership = z.infer<typeof tenantMembershipSchema>;
+export type TenantMembershipInput = z.infer<typeof tenantMembershipInputSchema>;
+export type Contest = z.infer<typeof contestSchema>;
+export type ContestInput = z.infer<typeof contestInputSchema>;
+export type ProctorEventType = z.infer<typeof proctorEventTypeSchema>;
+export type ProctorEvent = z.infer<typeof proctorEventSchema>;
+export type ProctorEventInput = z.infer<typeof proctorEventInputSchema>;
+export type DpdpConsentLog = z.infer<typeof dpdpConsentLogSchema>;
+export type DpdpConsentInput = z.infer<typeof dpdpConsentInputSchema>;
+

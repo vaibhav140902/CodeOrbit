@@ -6,7 +6,7 @@ console.log("   CODEORBIT TASK #4: END-TO-END PLATFORM SMOKE & JOURNEY VERIFICAT
 console.log("================================================================================\n");
 
 const PORT = 3001;
-const BASE_URL = `http://localhost:${PORT}`;
+const BASE_URL = process.env.BASE_URL || `http://127.0.0.1:${PORT}`;
 
 let totalAssertions = 0;
 let passedAssertions = 0;
