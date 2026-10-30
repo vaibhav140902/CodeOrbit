@@ -1,7 +1,8 @@
 "use client";
 
 import Editor, { type Monaco } from "@monaco-editor/react";
-import { useEffect } from "react";
+import type * as monacoEditor from "monaco-editor";
+import { useEffect, useRef } from "react";
 import { configureMonacoLoader } from "@/lib/monaco-loader";
 
 const defineThemes = (monaco: Monaco) => {
@@ -44,12 +45,49 @@ type ProblemCodeEditorProps = {
   theme: string;
   onChange: (value: string) => void;
   onReady: () => void;
+  onRun?: () => void;
+  onSubmit?: () => void;
 };
 
-export function ProblemCodeEditor({ code, language, theme, onChange, onReady }: ProblemCodeEditorProps) {
+export function ProblemCodeEditor({
+  code,
+  language,
+  theme,
+  onChange,
+  onReady,
+  onRun,
+  onSubmit,
+}: ProblemCodeEditorProps) {
+  const onRunRef = useRef(onRun);
+  const onSubmitRef = useRef(onSubmit);
+
+  useEffect(() => {
+    onRunRef.current = onRun;
+    onSubmitRef.current = onSubmit;
+  }, [onRun, onSubmit]);
+
   useEffect(() => {
     configureMonacoLoader();
   }, []);
+
+  const handleMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: Monaco) => {
+    // Cmd + Enter / Ctrl + Enter -> Run
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      onRunRef.current?.();
+    });
+
+    // Cmd + ' / Ctrl + ' -> Submit (Standard competitive programming keybinding)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Quote, () => {
+      onSubmitRef.current?.();
+    });
+
+    // Cmd + Shift + Enter / Ctrl + Shift + Enter -> Submit (Alternate keybinding)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
+      onSubmitRef.current?.();
+    });
+
+    onReady();
+  };
 
   return (
     <Editor
@@ -59,12 +97,10 @@ export function ProblemCodeEditor({ code, language, theme, onChange, onReady }: 
       value={code}
       loading={
         <div className="flex h-full items-center justify-center text-sm text-slate-300">
-          Loading secure editor...
+          Loading Monaco editor...
         </div>
       }
-      onMount={() => {
-        onReady();
-      }}
+      onMount={handleMount}
       onChange={(value) => onChange(value ?? "")}
       beforeMount={defineThemes}
       theme={theme}
@@ -78,8 +114,17 @@ export function ProblemCodeEditor({ code, language, theme, onChange, onReady }: 
         roundedSelection: false,
         padding: { top: 12, bottom: 12 },
         glyphMargin: false,
-        folding: false,
+        folding: true,
         renderLineHighlight: "line",
+        quickSuggestions: true,
+        suggestOnTriggerCharacters: true,
+        tabSize: 2,
+        formatOnPaste: true,
+        formatOnType: true,
+        cursorBlinking: "smooth",
+        smoothScrolling: true,
+        bracketPairColorization: { enabled: true },
+        guides: { bracketPairs: true },
       }}
     />
   );

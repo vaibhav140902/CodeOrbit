@@ -244,6 +244,9 @@ export const setCachedAiResponse = (
 
 const modeTitle: Record<AiAssistMode, string> = {
   hint: "Smart Hint",
+  hint_1: "Level 1: Mental Model & Complexity",
+  hint_2: "Level 2: Data Structure & Pattern",
+  hint_3: "Level 3: Step-by-Step Pseudocode",
   eli5: "Explain Like I'm 5",
   solver: "AI Auto-Solver",
   review: "Submission Review + Complexity",
@@ -900,18 +903,43 @@ export const generateDeterministicProblemAssist = (
   const langKey = resolveLanguageKey(input.language);
   const problemName = input.problemName || (curated ? problemSlug.replace(/-/g, " ") : "Algorithmic Problem");
 
-  if (mode === "hint") {
+  if (mode === "hint" || mode === "hint_1" || mode === "hint_2" || mode === "hint_3") {
     if (curated) {
-      const content = [
-        `### Progressive Hints for ${problemName}\n`,
-        `**Hint 1 (Mental Model):** ${curated.hints[0]}\n`,
-        `**Hint 2 (Optimization Path):** ${curated.hints[1]}\n`,
-        `**Hint 3 (Edge Cases & Traps):** ${curated.hints[2]}\n`,
-        `---\n**Target Efficiency:** ${curated.targetComplexity}`,
-      ].join("\n");
+      let content = "";
+      let title = modeTitle[mode];
+
+      if (mode === "hint_1") {
+        content = [
+          `### Level 1: Mental Model & Complexity Target\n`,
+          `**Conceptual Nudge:** ${curated.hints[0]}\n`,
+          `**Target Complexity:** ${curated.targetComplexity}`,
+          `\n*Try thinking how to maintain this invariant before unlocking Level 2.*`,
+        ].join("\n");
+      } else if (mode === "hint_2") {
+        content = [
+          `### Level 2: Data Structure & Pattern Suggestion\n`,
+          `**Recommended Strategy:** ${curated.hints[1]}\n`,
+          `**Why this pattern?** It eliminates redundant lookups and achieves the required ${curated.targetComplexity} bound.`,
+          `\n*Draft your solution now, or unlock Level 3 if you need a pseudocode walkthrough.*`,
+        ].join("\n");
+      } else if (mode === "hint_3") {
+        content = [
+          `### Level 3: Step-by-Step Pseudocode Breakdown\n`,
+          `**Algorithmic Breakdown:** ${curated.hints[2]}\n`,
+          `**Edge Cases to Guard:** Check empty input, negative numbers, single element, and duplicate elements.`,
+        ].join("\n");
+      } else {
+        content = [
+          `### Progressive Hints for ${problemName}\n`,
+          `**Hint 1 (Mental Model):** ${curated.hints[0]}\n`,
+          `**Hint 2 (Optimization Path):** ${curated.hints[1]}\n`,
+          `**Hint 3 (Edge Cases & Traps):** ${curated.hints[2]}\n`,
+          `---\n**Target Efficiency:** ${curated.targetComplexity}`,
+        ].join("\n");
+      }
 
       return {
-        title: modeTitle.hint,
+        title,
         content,
         provider: "codeorbit-fallback",
       };
@@ -938,16 +966,25 @@ export const generateDeterministicProblemAssist = (
       hint2 = "Track visited nodes or mark grid cells in-place to prevent cyclic infinite loops.";
     }
 
-    const content = [
-      `### Hints for ${problemName}\n`,
-      `**Hint 1 (Mental Model):** ${hint1}\n`,
-      `**Hint 2 (Optimization Path):** ${hint2}\n`,
-      `**Hint 3 (Edge Cases & Invariants):** ${hint3}\n`,
-      `---\n**Target Complexity:** Aim for O(N) or O(N log N) time; avoid nested O(N^2) scans.`,
-    ].join("\n");
+    let content = "";
+    if (mode === "hint_1") {
+      content = `### Level 1: Mental Model\n${hint1}\n\n**Target Complexity:** Aim for O(N) or O(N log N) time; avoid nested O(N^2) scans.`;
+    } else if (mode === "hint_2") {
+      content = `### Level 2: Data Structure & Pattern\n${hint2}\n\n**Strategy:** Use efficient indexing to cut out unnecessary passes.`;
+    } else if (mode === "hint_3") {
+      content = `### Level 3: Step-by-Step Pseudocode\n${hint3}\n\n**Invariant Checklist:** 1. Initialize data structure. 2. Iterate collection once. 3. Return answer or fallback.`;
+    } else {
+      content = [
+        `### Hints for ${problemName}\n`,
+        `**Hint 1 (Mental Model):** ${hint1}\n`,
+        `**Hint 2 (Optimization Path):** ${hint2}\n`,
+        `**Hint 3 (Edge Cases & Invariants):** ${hint3}\n`,
+        `---\n**Target Complexity:** Aim for O(N) or O(N log N) time; avoid nested O(N^2) scans.`,
+      ].join("\n");
+    }
 
     return {
-      title: modeTitle.hint,
+      title: modeTitle[mode],
       content,
       provider: "codeorbit-fallback",
     };

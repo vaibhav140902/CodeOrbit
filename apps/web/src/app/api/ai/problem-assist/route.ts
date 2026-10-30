@@ -21,6 +21,9 @@ export const dynamic = "force-dynamic";
 
 const modeTitle: Record<AiAssistMode, string> = {
   hint: "Smart Hint",
+  hint_1: "Level 1: Mental Model & Complexity",
+  hint_2: "Level 2: Data Structure & Pattern",
+  hint_3: "Level 3: Step-by-Step Pseudocode",
   eli5: "Explain Like I'm 5",
   solver: "AI Auto-Solver",
   review: "Submission Review + Complexity",
@@ -28,6 +31,12 @@ const modeTitle: Record<AiAssistMode, string> = {
 
 const modeInstruction: Record<AiAssistMode, string> = {
   hint: "Give three progressive hints only. Do not reveal the full solution or full code. Mention the target time complexity in one line.",
+  hint_1:
+    "Give a subtle conceptual nudge only. Focus on the core mental model, invariants, and state the target time and space complexity explicitly. Do NOT name specific data structures or provide code.",
+  hint_2:
+    "Suggest the optimal data structure and algorithmic pattern (e.g. Hash Map, Two Pointers, Monotonic Stack, Sliding Window, DP). Explain WHY this pattern fits the constraints and prevents TLE. Do NOT provide pseudocode or final code.",
+  hint_3:
+    "Provide a clear, step-by-step numbered algorithmic breakdown and language-agnostic pseudocode. Outline edge cases to watch for. Do NOT write full executable syntax.",
   eli5: "Explain the problem like the student is 5 years old. Use a simple analogy, then 3 tiny steps, then a tiny example.",
   solver:
     "Provide a guarded premium solution with these sections: Strategy, Step-by-step algorithm, Time and space complexity, Edge cases, and a reference solution in the requested language. Keep it concise but complete.",

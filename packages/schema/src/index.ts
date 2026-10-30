@@ -9,6 +9,18 @@ export const problemListItemSchema = z.object({
   tags: z.array(z.string().min(1)),
 });
 
+export const companyInterviewContextSchema = z.object({
+  targetCompanies: z.array(z.string().min(1)),
+  roundType: z.string().min(1),
+  frequency: z.enum(["High Frequency", "Standard Assessment", "Core Foundation", "OA Critical"]),
+  timeTargetMinutes: z.number().int().positive(),
+  optimalComplexity: z.object({
+    time: z.string(),
+    space: z.string(),
+  }),
+  trapAlert: z.string().optional(),
+});
+
 export const problemDetailSchema = problemListItemSchema.extend({
   description: z.string().min(1),
   examples: z.array(
@@ -20,6 +32,7 @@ export const problemDetailSchema = problemListItemSchema.extend({
   ),
   constraints: z.array(z.string().min(1)),
   starterCode: z.string().min(1),
+  companyContext: companyInterviewContextSchema.optional(),
 });
 
 export const workspaceRoleSchema = z.enum(["user", "admin", "recruiter_beta", "campus_beta"]);
@@ -165,7 +178,15 @@ export const submissionReceiptSchema = codeExecutionResultSchema.extend({
   id: z.string().min(1),
 });
 
-export const aiAssistModeSchema = z.enum(["hint", "eli5", "solver", "review"]);
+export const aiAssistModeSchema = z.enum([
+  "hint",
+  "hint_1",
+  "hint_2",
+  "hint_3",
+  "eli5",
+  "solver",
+  "review",
+]);
 
 export const aiAssistInputSchema = z.object({
   problemId: z.string().min(1),
@@ -855,5 +876,6 @@ export type UserTier = z.infer<typeof userTierSchema>;
 export type RateLimitAction = z.infer<typeof rateLimitActionSchema>;
 export type RateLimitStatus = z.infer<typeof rateLimitStatusSchema>;
 export type RateLimitErrorResponse = z.infer<typeof rateLimitErrorResponseSchema>;
+export type CompanyInterviewContext = z.infer<typeof companyInterviewContextSchema>;
 
 
