@@ -28,15 +28,11 @@ export function Topbar() {
 
   const navItems = useMemo<NavItem[]>(
     () => [
-      { href: "/", label: "Home" },
       { href: "/problems", label: "Problems", match: (value) => value === "/problems" || value.startsWith("/problems/") },
-      { href: "/tracks", label: "Tracks", match: isTracksPath },
       { href: "/resume-roaster", label: "Resume Roaster" },
       { href: "/mock-interview", label: "AI Interview" },
-      { href: "/readiness-score", label: "Readiness" },
+      { href: "/for-campuses/demo", label: "For Campuses" },
       { href: "/pricing", label: "Pricing" },
-      { href: "/for-recruiters", label: "Recruiters" },
-      { href: "/about", label: "About" },
       ...(profile?.isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
     ],
     [profile?.isAdmin]
@@ -55,35 +51,40 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-[color:var(--border)] bg-[color:var(--bg-elevated)]/92 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 px-4 py-3 md:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2.5 group">
             <Image
               src={BRAND.markPath}
               alt={`${BRAND.name} logo`}
-              width={28}
-              height={28}
-              className="h-7 w-7 rounded-full border border-[color:var(--border)]"
+              width={30}
+              height={30}
+              className="h-7 w-7 rounded-lg border border-[color:var(--border)] transition-transform group-hover:scale-105"
             />
             <div>
-              <p className="text-sm font-extrabold tracking-tight">{BRAND.name}</p>
-              <p className="hidden text-[11px] text-muted sm:block">{BRAND.tagline}</p>
+              <p className="text-sm font-extrabold tracking-tight text-[color:var(--text-main)]">{BRAND.name}</p>
+              <p className="hidden text-[10px] text-muted sm:block uppercase tracking-wider font-semibold">Career Readiness OS</p>
             </div>
           </Link>
         </div>
 
-        <nav className="hidden items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)]/90 px-2 py-1 lg:flex">
+        <nav className="hidden items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)]/90 px-3 py-1 lg:flex shadow-sm">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`rounded-full px-3 py-2 text-sm font-semibold transition ${
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 ${
                 isActive(item)
-                  ? "bg-[color:var(--accent-soft)] text-[color:var(--text-main)]"
+                  ? "bg-[color:var(--accent-soft)] text-[color:var(--text-main)] font-bold shadow-xs"
                   : "text-muted hover:bg-[color:var(--accent-soft)] hover:text-[color:var(--text-main)]"
               }`}
             >
-              {item.label}
+              <span>{item.label}</span>
+              {item.href === "/resume-roaster" && (
+                <span className="rounded-full bg-rose-500/20 border border-rose-500/30 px-1.5 py-0.2 text-[9px] font-bold text-rose-300 uppercase">
+                  Free
+                </span>
+              )}
             </Link>
           ))}
         </nav>

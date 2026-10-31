@@ -641,9 +641,9 @@ export function ProblemWorkspacePreview({
         )}
 
         {/* Workspace Split Layout */}
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-          {/* Left Split: Problem Details & Progressive Socratic AI Hints */}
-          <aside className={`${focusMode ? "hidden" : "space-y-4 xl:col-span-5"}`}>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 items-start">
+          {/* Left Split: Problem Details & Progressive Socratic AI Hints (Independent Scroll) */}
+          <aside className={`${focusMode ? "hidden" : "space-y-4 xl:col-span-5 xl:max-h-[calc(100vh-120px)] xl:overflow-y-auto xl:sticky xl:top-20 pr-1.5 custom-scrollbar"}`}>
             {/* Problem Statement */}
             <section className="surface-card p-4 sm:p-5">
               <h2 className="mb-3 text-base font-semibold text-slate-200">Problem Description</h2>
@@ -863,7 +863,7 @@ export function ProblemWorkspacePreview({
                     <span className="font-mono text-slate-400">{code.split("\n").length} lines</span>
                   </div>
                 </div>
-                <div className="h-[360px] sm:h-[460px]">
+                <div className="h-[440px] sm:h-[540px] xl:h-[580px]">
                   {preferTextareaEditor || (editorFallback && !editorReady) ? (
                     <textarea
                       value={code}

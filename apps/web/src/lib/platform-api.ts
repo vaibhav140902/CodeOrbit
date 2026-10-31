@@ -342,6 +342,19 @@ export const platformApi = {
     const payload = resumeRoasterInputSchema.parse(input);
     return postJson("/api/ai/resume/roast", payload, resumeRoasterResponseSchema);
   },
+  async parseResumeFile(file: File): Promise<{ success: boolean; fileName: string; text: string; wordCount: number }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/platform/resume/parse", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Failed to extract text from resume file.");
+    }
+    return res.json();
+  },
   async updateViewerPreferences(input: ViewerPreferencesInput): Promise<ViewerPreferences> {
     const payload = viewerPreferencesInputSchema.parse(input);
     return postJson("/api/platform/preferences", payload, viewerPreferencesSchema);
