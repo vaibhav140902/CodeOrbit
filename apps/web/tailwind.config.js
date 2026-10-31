@@ -1,7 +1,10 @@
-const path = require("path");
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   darkMode: ["class", '[data-theme="dark"]'],
   content: [
     path.join(__dirname, "src/**/*.{js,ts,jsx,tsx,mdx}"),

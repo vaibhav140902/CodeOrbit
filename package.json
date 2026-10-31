@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "turbo run dev --parallel",
     "dev:web": "npm run dev --workspace @codeorbit/web",
+    "start:web": "npm run start --workspace @codeorbit/web",
     "build": "turbo run build",
     "build:web": "npm run build --workspace @codeorbit/web",
     "lint": "turbo run lint",

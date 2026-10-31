@@ -446,7 +446,7 @@ export function ResumeRoasterView() {
           <div className="surface-card p-6 sm:p-8 space-y-6 border-2 border-slate-700 bg-slate-900/90 shadow-2xl animate-fade-in">
             {/* Header: Score Meter & Tier Fit */}
             {(() => {
-              const colors = getScoreColor(roastResult.atsScore);
+              const colors = getScoreColor(roastResult.overallAtsScore);
               return (
                 <div className={`rounded-2xl border ${colors.border} ${colors.bg} p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl ${colors.glow}`}>
                   <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
@@ -454,7 +454,7 @@ export function ResumeRoasterView() {
                     <div className="relative h-28 w-28 shrink-0 flex items-center justify-center rounded-full border-4 border-slate-800 bg-slate-950/80 shadow-inner">
                       <div className="text-center">
                         <div className={`text-4xl font-black ${colors.text} leading-none tracking-tight`}>
-                          {roastResult.atsScore}
+                          {roastResult.overallAtsScore}
                         </div>
                         <div className="text-[10px] uppercase font-bold text-slate-500 mt-1">/ 100 ATS</div>
                       </div>
@@ -466,9 +466,9 @@ export function ResumeRoasterView() {
                       </div>
                       <h2 className="text-2xl font-black text-slate-100">{roastResult.companyTierFit}</h2>
                       <p className="text-xs text-slate-300 mt-1 max-w-md">
-                        {roastResult.atsScore >= 80
+                        {roastResult.overallAtsScore >= 80
                           ? "High candidate readiness with quantifiable business impact and clean technical depth."
-                          : roastResult.atsScore >= 60
+                          : roastResult.overallAtsScore >= 60
                           ? "Moderate readiness. Resume has technical foundation but lacks metrics and specific keywords."
                           : "High rejection risk. Resume relies on generic buzzwords without verifiable project scope."}
                       </p>
@@ -476,11 +476,11 @@ export function ResumeRoasterView() {
                   </div>
 
                   <div className="flex flex-col items-center sm:items-end gap-2 shrink-0">
-                    <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Buzzwords Flagged</span>
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Fluffy Bullets</span>
                     <span className="text-2xl font-black text-rose-400">
-                      {roastResult.buzzwordsDetected.length}
+                      {roastResult.metricRoast.fluffyBulletsCount}
                     </span>
-                    <span className="text-[10px] text-slate-500">hollow fillers detected</span>
+                    <span className="text-[10px] text-slate-500">non-quantified lines</span>
                   </div>
                 </div>
               );
@@ -512,7 +512,7 @@ export function ResumeRoasterView() {
                     : "border-transparent text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Actionable Bullet Fixes ({roastResult.actionableFixes.length})
+                Actionable Bullet Fixes ({roastResult.threeCriticalFixes.length})
               </button>
               <button
                 type="button"
@@ -523,7 +523,7 @@ export function ResumeRoasterView() {
                     : "border-transparent text-slate-400 hover:text-slate-200"
                 }`}
               >
-                ATS Keywords ({roastResult.matchedKeywords.length} Matched / {roastResult.missingCriticalKeywords.length} Missing)
+                ATS Keywords ({roastResult.companySpecificAlignment.foundKeywords.length} Matched / {roastResult.companySpecificAlignment.missingCrucialKeywords.length} Missing)
               </button>
               <button
                 type="button"
@@ -534,7 +534,7 @@ export function ResumeRoasterView() {
                     : "border-transparent text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Hollow Buzzwords ({roastResult.buzzwordsDetected.length})
+                Metric Health ({roastResult.metricRoast.quantifiedBulletsCount} Quantified)
               </button>
               <button
                 type="button"
@@ -556,7 +556,7 @@ export function ResumeRoasterView() {
                   Replace weak descriptive lines with high-impact, quantitative metrics that pass senior recruiter screens:
                 </p>
                 <div className="space-y-3">
-                  {roastResult.actionableFixes.map((fix, i) => (
+                  {roastResult.threeCriticalFixes.map((fix, i) => (
                     <div
                       key={i}
                       className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-2 group hover:border-slate-700 transition-all"
@@ -590,7 +590,7 @@ export function ResumeRoasterView() {
                     Critical Missing Keywords for {roastResult.targetCompany}
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {roastResult.missingCriticalKeywords.map((kw) => (
+                    {roastResult.companySpecificAlignment.missingCrucialKeywords.map((kw) => (
                       <span
                         key={kw}
                         className="rounded-lg border border-rose-500/30 bg-rose-950/30 px-3 py-1 text-xs font-medium text-rose-300"
@@ -606,7 +606,7 @@ export function ResumeRoasterView() {
                     Matched Keywords Detected
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {roastResult.matchedKeywords.map((kw) => (
+                    {roastResult.companySpecificAlignment.foundKeywords.map((kw) => (
                       <span
                         key={kw}
                         className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-3 py-1 text-xs font-medium text-emerald-300"
@@ -619,21 +619,19 @@ export function ResumeRoasterView() {
               </div>
             )}
 
-            {/* Tab 3: Buzzwords */}
+            {/* Tab 3: Metric Health */}
             {activeTab === "buzzwords" && (
               <div className="space-y-3 pt-2">
                 <p className="text-xs text-slate-400">
-                  Recruiters ignore non-verifiable adjectives. Replace these flagged terms with concrete system metrics:
+                  Metric evaluation &amp; impact verdict:
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {roastResult.buzzwordsDetected.map((bw) => (
-                    <span
-                      key={bw}
-                      className="rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-1 text-xs font-semibold text-amber-300"
-                    >
-                      ⚠ &quot;{bw}&quot;
-                    </span>
-                  ))}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-2">
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {roastResult.metricRoast.verdict}
+                  </p>
+                  <p className="text-xs text-amber-300 pt-2 border-t border-slate-800">
+                    💡 Culture alignment note: {roastResult.companySpecificAlignment.cultureAlignmentFeedback}
+                  </p>
                 </div>
               </div>
             )}
@@ -681,8 +679,8 @@ export function ResumeRoasterView() {
                 <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`/api/og/roaster?score=${roastResult.atsScore}&company=${encodeURIComponent(roastResult.targetCompany)}&role=${encodeURIComponent(roastResult.targetRole)}&tier=${encodeURIComponent(roastResult.companyTierFit)}`}
-                    alt={`CodeOrbit ATS Score Card - ${roastResult.atsScore}/100`}
+                    src={`/api/og/roaster?score=${roastResult.overallAtsScore}&company=${encodeURIComponent(roastResult.targetCompany)}&role=${encodeURIComponent(roastResult.targetRole)}&tier=${encodeURIComponent(roastResult.companyTierFit)}`}
+                    alt={`CodeOrbit ATS Score Card - ${roastResult.overallAtsScore}/100`}
                     className="w-full h-auto aspect-[1200/630] object-cover"
                     loading="lazy"
                   />
