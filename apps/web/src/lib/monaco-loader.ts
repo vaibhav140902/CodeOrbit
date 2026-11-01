@@ -11,8 +11,13 @@ export const configureMonacoLoader = () => {
 
   loader.config({
     paths: {
-      vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs",
+      vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs",
     },
   });
   configured = true;
 };
+
+// Eagerly configure in client browser context before Editor component mounts
+if (typeof window !== "undefined") {
+  configureMonacoLoader();
+}

@@ -969,6 +969,8 @@ export const rateLimitActionSchema = z.enum([
   "resume_export",
   "problem_assist",
   "mock_interview",
+  "mock_interview_turn",
+  "mock_interview_live",
   "readiness_score",
   "billing_action",
 ]);

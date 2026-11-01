@@ -140,26 +140,34 @@ export function Topbar() {
 
         <button
           onClick={() => setMobileOpen((current) => !current)}
-          className="btn-ghost px-3 py-2 text-sm lg:hidden"
+          className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold lg:hidden rounded-lg border border-[color:var(--border)]"
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
         >
-          {mobileOpen ? "Close" : "Menu"}
+          <span className="text-sm font-mono">{mobileOpen ? "✕" : "☰"}</span>
+          <span>{mobileOpen ? "Close" : "Menu"}</span>
         </button>
       </div>
 
       {mobileOpen ? (
-        <div className="border-t border-[color:var(--border)] px-4 py-4 lg:hidden">
+        <div className="border-t border-[color:var(--border)] bg-[color:var(--bg-elevated)]/98 px-4 py-4 lg:hidden shadow-xl backdrop-blur-2xl animate-in slide-in-from-top-2">
           <div className="mx-auto flex max-w-[1180px] flex-col gap-2">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-2xl px-4 py-3 text-sm font-semibold ${
-                  isActive(item) ? "bg-[color:var(--accent-soft)]" : "surface-soft"
+                className={`rounded-xl px-4 py-2.5 text-xs font-bold transition flex items-center justify-between ${
+                  isActive(item)
+                    ? "bg-[color:var(--accent-soft)] text-cyan-300 border border-cyan-500/30 font-extrabold"
+                    : "surface-soft text-slate-300 hover:text-white"
                 }`}
               >
-                {item.label}
+                <span>{item.label}</span>
+                {item.href === "/resume-roaster" && (
+                  <span className="rounded-full bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-300 uppercase">
+                    Free
+                  </span>
+                )}
               </Link>
             ))}
 

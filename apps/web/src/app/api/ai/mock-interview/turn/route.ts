@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const viewer = await getViewerContextFromHeaders(request.headers);
-    await assertTierRateLimit(request, "mock_interview", viewer);
+    await assertTierRateLimit(request, "mock_interview_turn", viewer);
 
     const payload = mockInterviewTurnInputSchema.parse(await request.json());
     const turnResponse = await generateMockInterviewTurn(payload);

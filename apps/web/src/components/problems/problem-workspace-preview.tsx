@@ -10,6 +10,7 @@ import { companyDirectory, trackItems } from "@/data/hiring-os";
 import { getProblemRuntimeSpec, getProblemTemplate } from "@/lib/problem-runtime";
 import { usePlatformAuth } from "@/lib/auth-context";
 import { platformApi } from "@/lib/platform-api";
+import { toast } from "@/components/ui/toast-bus";
 
 const defaultBillingSummary: BillingSummary = {
   planId: "free",
@@ -155,6 +156,7 @@ export function ProblemWorkspacePreview({
   const [editorReady, setEditorReady] = useState(false);
   const [editorFallback, setEditorFallback] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"problem" | "code" | "console">("problem");
   const skipAutosaveRef = useRef(true);
   const hasEditedSinceLoadRef = useRef(false);
 
@@ -360,6 +362,7 @@ export function ProblemWorkspacePreview({
     setConsoleStatus("Running");
     setRuntimeLabel("Judge0 isolated runner");
     setRawConsoleOutput("Executing your code against testcase in sandbox...");
+    toast.info("Executing code in Judge0 sandbox...", "Running Sandbox");
 
     try {
       const response = await platformApi.runCode({
@@ -384,12 +387,22 @@ export function ProblemWorkspacePreview({
       });
       setRawConsoleOutput(response.stdout || response.stderr || response.compileOutput || response.message);
       setNotice("Run completed successfully via authenticated Judge0 runner.");
+
+      if (response.passed) {
+        const ms = response.timeSeconds ? `${Math.round(parseFloat(response.timeSeconds) * 1000)}ms` : "";
+        toast.success(`Verdict: ${response.status} ${ms ? `• ${ms}` : ""}`, "Test Passed");
+      } else {
+        toast.error(`Verdict: ${response.status}`, "Test Output Check");
+      }
+      setMobileTab("console");
     } catch (error) {
       console.error("Run failed:", error);
       setConsoleStatus("Error");
       setRuntimeLabel("Execution error");
       setExecutionResult(null);
-      setRawConsoleOutput((error as Error).message || "Code execution failed.");
+      const msg = (error as Error).message || "Code execution failed.";
+      setRawConsoleOutput(msg);
+      toast.error(msg, "Execution Error");
     } finally {
       setRunning(false);
     }
@@ -404,6 +417,7 @@ export function ProblemWorkspacePreview({
       setRuntimeLabel("Public preview");
       setRawConsoleOutput("Sign in to submit your solution, verify testcases, and build your verified Readiness Score.");
       setNotice("Sign in to unlock permanent submissions, campus placement analytics, and verified scoring.");
+      toast.warning("Sign in to unlock verified submissions and readiness scoring.", "Sign-In Required");
       return;
     }
 
@@ -411,6 +425,7 @@ export function ProblemWorkspacePreview({
       setConsoleStatus("Locked");
       setRuntimeLabel("Pro tier required");
       setRawConsoleOutput("Free tier covers Easy problems. Upgrade to Pro to submit Medium and Hard problems.");
+      toast.warning("Pro Sprint required for Medium/Hard problems.", "Pro Access Required");
       return;
     }
 
@@ -418,6 +433,7 @@ export function ProblemWorkspacePreview({
     setConsoleStatus("Queueing");
     setRuntimeLabel("Judge0 test suite");
     setRawConsoleOutput("Submitting solution to full automated test suite...");
+    toast.info("Submitting solution to automated test suite...", "Judge0 Evaluation");
 
     try {
       const response = await platformApi.submitSolution({
@@ -446,7 +462,11 @@ export function ProblemWorkspacePreview({
       const isAccepted = response.status === "Accepted";
       if (!isAccepted) {
         setFailedAttemptsCount((count) => count + 1);
+        toast.error(`Verdict: ${response.status}`, "Submission Failed");
+      } else {
+        toast.success("Solution Accepted! Placement readiness score updated.", "Accepted 🎉");
       }
+      setMobileTab("console");
 
       setNotice(
         isAccepted
@@ -640,10 +660,59 @@ export function ProblemWorkspacePreview({
           </div>
         )}
 
+        {/* Mobile / Compact 3-Tab Segment Control (Hidden on XL screens) */}
+        <div className="mb-4 flex items-center rounded-xl border border-slate-700/80 bg-slate-900/90 p-1 xl:hidden shadow-sm backdrop-blur-md sticky top-16 z-20">
+          <button
+            type="button"
+            onClick={() => setMobileTab("problem")}
+            className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              mobileTab === "problem"
+                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>📖 Problem & Hints</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("code")}
+            className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              mobileTab === "code"
+                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>💻 Code Editor</span>
+            <span className="text-[10px] font-mono text-cyan-400/80">({code.split("\n").length}L)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("console")}
+            className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              mobileTab === "console"
+                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>⚡ Console</span>
+            {executionResult && (
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  executionResult.passed ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" : "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]"
+                }`}
+              />
+            )}
+          </button>
+        </div>
+
         {/* Workspace Split Layout */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 items-start">
           {/* Left Split: Problem Details & Progressive Socratic AI Hints (Independent Scroll) */}
-          <aside className={`${focusMode ? "hidden" : "space-y-4 xl:col-span-5 xl:max-h-[calc(100vh-120px)] xl:overflow-y-auto xl:sticky xl:top-20 pr-1.5 custom-scrollbar"}`}>
+          <aside
+            className={`${focusMode ? "hidden" : ""} ${
+              mobileTab !== "problem" ? "hidden xl:block" : "block"
+            } space-y-4 xl:col-span-5 xl:max-h-[calc(100vh-120px)] xl:overflow-y-auto xl:sticky xl:top-20 pr-1.5 custom-scrollbar`}
+          >
             {/* Problem Statement */}
             <section className="surface-card p-4 sm:p-5">
               <h2 className="mb-3 text-base font-semibold text-slate-200">Problem Description</h2>
@@ -804,13 +873,28 @@ export function ProblemWorkspacePreview({
                   {assistOutput}
                 </div>
               </div>
+
+              {/* Mobile CTA: Fast-Switch to Code Editor */}
+              <div className="xl:hidden pt-3">
+                <button
+                  type="button"
+                  onClick={() => setMobileTab("code")}
+                  className="w-full rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 py-3 text-xs font-bold text-cyan-200 hover:from-cyan-500/30 hover:to-blue-500/30 transition flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <span>Open Code Editor & Solve ({selectedLanguageLabel}) →</span>
+                </button>
+              </div>
             </section>
           </aside>
 
           {/* Right Split: Monaco Editor & Interactive Testcase Console */}
-          <section className={`space-y-4 ${focusMode ? "xl:col-span-12" : "xl:col-span-7"}`}>
+          <section
+            className={`space-y-4 ${focusMode ? "xl:col-span-12" : "xl:col-span-7"} ${
+              mobileTab === "problem" ? "hidden xl:block" : "block"
+            }`}
+          >
             {/* Editor Container */}
-            <div className="surface-card p-4">
+            <div className={`surface-card p-4 ${mobileTab === "console" ? "hidden xl:block" : "block"}`}>
               <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <select
@@ -863,7 +947,7 @@ export function ProblemWorkspacePreview({
                     <span className="font-mono text-slate-400">{code.split("\n").length} lines</span>
                   </div>
                 </div>
-                <div className="h-[440px] sm:h-[540px] xl:h-[580px]">
+                <div className="h-[480px] sm:h-[540px] xl:h-[calc(100vh-320px)] min-h-[460px]">
                   {preferTextareaEditor || (editorFallback && !editorReady) ? (
                     <textarea
                       value={code}
@@ -887,10 +971,28 @@ export function ProblemWorkspacePreview({
                   )}
                 </div>
               </div>
+
+              {/* Mobile Quick-Jump between Editor and Console */}
+              <div className="flex items-center justify-between xl:hidden pt-3 border-t border-slate-800 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setMobileTab("problem")}
+                  className="text-xs font-semibold text-slate-400 hover:text-slate-200 underline"
+                >
+                  ← Problem Description
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileTab("console")}
+                  className="text-xs font-bold text-cyan-400 hover:text-cyan-300"
+                >
+                  View Testcases & Output →
+                </button>
+              </div>
             </div>
 
             {/* Interactive Testcase & Execution Console Tabs */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className={`grid grid-cols-1 gap-4 lg:grid-cols-2 ${mobileTab === "code" ? "hidden xl:grid" : "grid"}`}>
               {/* Testcase Console */}
               <div className="surface-card p-4">
                 <div className="mb-3 flex items-center justify-between">
@@ -1031,6 +1133,17 @@ export function ProblemWorkspacePreview({
                     </pre>
                   </div>
                 )}
+              </div>
+
+              {/* Mobile Quick-Return to Code Editor */}
+              <div className="col-span-full flex items-center justify-between xl:hidden pt-1">
+                <button
+                  type="button"
+                  onClick={() => setMobileTab("code")}
+                  className="w-full rounded-xl border border-cyan-500/30 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5"
+                >
+                  <span>← Back to Code Editor</span>
+                </button>
               </div>
             </div>
           </section>

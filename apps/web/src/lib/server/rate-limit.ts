@@ -66,9 +66,19 @@ export const TIER_QUOTAS: Record<RateLimitAction, Record<UserTier, QuotaConfig>>
     pro: { limit: 200, windowMs: 86_400_000 },  // 200 / day
   },
   mock_interview: {
-    guest: { limit: 2, windowMs: 86_400_000 },  // 2 / day
-    free: { limit: 2, windowMs: 86_400_000 },   // 2 / day
+    guest: { limit: 2, windowMs: 86_400_000 },  // 2 / day (full interview scorecard)
+    free: { limit: 2, windowMs: 86_400_000 },   // 2 / day (full interview scorecard)
     pro: { limit: 20, windowMs: 86_400_000 },   // 20 / day
+  },
+  mock_interview_turn: {
+    guest: { limit: 30, windowMs: 3_600_000 },  // 30 / hour (conversational turns)
+    free: { limit: 30, windowMs: 3_600_000 },   // 30 / hour (conversational turns)
+    pro: { limit: 300, windowMs: 3_600_000 },  // 300 / hour
+  },
+  mock_interview_live: {
+    guest: { limit: 60, windowMs: 3_600_000 },  // 60 / hour (live coaching micro-cues)
+    free: { limit: 60, windowMs: 3_600_000 },   // 60 / hour (live coaching micro-cues)
+    pro: { limit: 600, windowMs: 3_600_000 },  // 600 / hour
   },
   readiness_score: {
     guest: { limit: 30, windowMs: 3_600_000 },  // 30 / hour

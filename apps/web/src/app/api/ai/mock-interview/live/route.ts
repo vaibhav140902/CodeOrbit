@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const viewer = await getViewerContextFromHeaders(request.headers);
-    await assertTierRateLimit(request, "mock_interview", viewer);
+    await assertTierRateLimit(request, "mock_interview_live", viewer);
 
     const payload = mockInterviewInputSchema.parse(await request.json());
     const transcript = sanitizePromptInput(payload.transcript, 10_000);
@@ -42,7 +42,25 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof RateLimitError) {
-      return rateLimitResponse(error);
+      return NextResponse.json(
+        {
+          headline: "Pacing Coach",
+          bullets: [
+            "Maintain steady pacing and articulate your thought process clearly.",
+            "State time and space complexity before writing the implementation.",
+            "Discuss edge cases and testing strategies to conclude strongly.",
+          ],
+          provider: "fallback",
+        },
+        {
+          status: 200,
+          headers: {
+            "Retry-After": String(error.retryAfterSec),
+            "X-RateLimit-Reset": String(error.resetAt),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
     }
     if (error instanceof AccessControlError) {
       return NextResponse.json({ message: error.message }, { status: error.status });

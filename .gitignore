@@ -88,3 +88,6 @@ frontend/src/admin-scripts/ServiceAccountkey.json
 .vercel
 .codeorbit-cache/
 
+node_modules
+.next.nosync
+.next
