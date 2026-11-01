@@ -12,7 +12,7 @@ export function AuthGuard({
   requireAdmin?: boolean;
   requiredRoles?: string[];
 }) {
-  const { authEnabled, loading, profile, user } = usePlatformAuth();
+  const { authEnabled, loading, profile, signOutCurrentUser, user } = usePlatformAuth();
 
   if (loading) {
     return (
@@ -68,8 +68,22 @@ export function AuthGuard({
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Admin Only</p>
           <h1 className="mt-3 text-2xl font-bold sm:text-3xl">This screen is reserved for admins.</h1>
           <p className="text-muted mt-3 text-sm sm:text-base">
-            Your current profile does not have the admin claim or role.
+            Signed in as <span className="font-mono font-medium text-[color:var(--text-main)]">{profile?.email || user.email}</span>. Your current profile does not have the admin claim or role.
           </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Link href="/dashboard" className="btn-secondary text-center text-sm">
+              Back to Dashboard
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                void signOutCurrentUser();
+              }}
+              className="btn-primary text-center text-sm"
+            >
+              Switch / Re-login
+            </button>
+          </div>
         </div>
       </div>
     );

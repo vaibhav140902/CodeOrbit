@@ -1543,6 +1543,24 @@ export const getAdminSummaryData = async (): Promise<AdminSummary> => {
   }
 };
 
+const getAdminEmails = (): Set<string> => {
+  const envAdmins =
+    process.env.ADMIN_EMAILS ||
+    process.env.NEXT_PUBLIC_ADMIN_EMAILS ||
+    "vaibhavmaurya.1409@gmail.com,test12@gmail.com,vaibhav.test@codeorbit.in";
+  return new Set(
+    envAdmins
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+  );
+};
+
+export const isConfiguredAdminEmail = (email?: string | null): boolean => {
+  if (!email) return false;
+  return getAdminEmails().has(email.toLowerCase());
+};
+
 export const buildViewerProfileData = (viewer: ViewerContext): UserProfile | null => {
   if (!viewer.uid || !viewer.email) {
     return null;
@@ -1550,14 +1568,15 @@ export const buildViewerProfileData = (viewer: ViewerContext): UserProfile | nul
 
   const displayName =
     viewer.displayName?.trim() || viewer.email.split("@")[0].replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "User";
+  const isAdmin = isConfiguredAdminEmail(viewer.email);
 
   return {
     uid: viewer.uid,
     email: viewer.email,
     displayName,
-    isAdmin: false,
+    isAdmin,
     locale: "en",
-    role: "user",
+    role: isAdmin ? "admin" : "user",
   };
 };
 
@@ -1577,16 +1596,17 @@ export const getViewerProfileData = async (viewer: ViewerContext): Promise<UserP
     if (!user) {
       return buildViewerProfileData(viewer);
     }
+    const isAdmin = Boolean(user.is_admin) || isConfiguredAdminEmail(user.email);
     return {
       uid: user.firebase_uid,
       email: user.email,
       displayName: user.display_name,
-      isAdmin: Boolean(user.is_admin),
+      isAdmin,
       locale: user.locale === "hi" ? "hi" : "en",
       role:
         user.role === "admin" || user.role === "recruiter_beta" || user.role === "campus_beta"
           ? user.role
-          : Boolean(user.is_admin)
+          : isAdmin
             ? "admin"
             : "user",
     };
@@ -1625,16 +1645,17 @@ export const getViewerProfileData = async (viewer: ViewerContext): Promise<UserP
       return buildViewerProfileData(viewer);
     }
 
+    const isAdmin = Boolean(user.is_admin) || isConfiguredAdminEmail(user.email || viewer.email);
     return {
       uid: user.firebase_uid || viewer.uid,
       email: user.email || viewer.email,
       displayName: user.display_name || viewer.displayName || "User",
-      isAdmin: Boolean(user.is_admin),
+      isAdmin,
       locale: user.locale === "hi" ? "hi" : "en",
       role:
         user.role === "admin" || user.role === "recruiter_beta" || user.role === "campus_beta"
           ? user.role
-          : Boolean(user.is_admin)
+          : isAdmin
             ? "admin"
             : "user",
     };
@@ -1682,16 +1703,17 @@ export const bootstrapUserProfileData = async (
       store.users.push(user);
     }
     writeLocalStorage(store);
+    const isAdmin = Boolean(user.is_admin) || isConfiguredAdminEmail(user.email);
     return {
       uid: user.firebase_uid,
       email: user.email,
       displayName: user.display_name,
-      isAdmin: Boolean(user.is_admin),
+      isAdmin,
       locale: user.locale === "hi" ? "hi" : "en",
       role:
         user.role === "admin" || user.role === "recruiter_beta" || user.role === "campus_beta"
           ? user.role
-          : Boolean(user.is_admin)
+          : isAdmin
             ? "admin"
             : "user",
     };
@@ -1721,16 +1743,17 @@ export const bootstrapUserProfileData = async (
       return buildViewerProfileData({ uid, email, displayName });
     }
 
+    const isAdmin = Boolean(user.is_admin) || isConfiguredAdminEmail(user.email || email);
     return {
       uid: user.firebase_uid || uid,
       email: user.email || email,
       displayName: user.display_name || displayName,
-      isAdmin: Boolean(user.is_admin),
+      isAdmin,
       locale: user.locale === "hi" ? "hi" : "en",
       role:
         user.role === "admin" || user.role === "recruiter_beta" || user.role === "campus_beta"
           ? user.role
-          : Boolean(user.is_admin)
+          : isAdmin
             ? "admin"
             : "user",
     };

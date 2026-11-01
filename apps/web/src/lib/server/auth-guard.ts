@@ -279,7 +279,10 @@ export const requireAuth = async (headers: Headers): Promise<ViewerContext> => {
 };
 
 const getAdminEmailList = (): Set<string> => {
-  const envAdmins = process.env.ADMIN_EMAILS || "vaibhavmaurya.1409@gmail.com";
+  const envAdmins =
+    process.env.ADMIN_EMAILS ||
+    process.env.NEXT_PUBLIC_ADMIN_EMAILS ||
+    "vaibhavmaurya.1409@gmail.com,test12@gmail.com,vaibhav.test@codeorbit.in";
   return new Set(
     envAdmins
       .split(",")

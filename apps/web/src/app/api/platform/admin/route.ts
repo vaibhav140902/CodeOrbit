@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ADMIN_EMAILS = new Set(
-  (process.env.ADMIN_EMAILS || "vaibhavmaurya.1409@gmail.com")
+  (process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || "vaibhavmaurya.1409@gmail.com,test12@gmail.com,vaibhav.test@codeorbit.in")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean)
