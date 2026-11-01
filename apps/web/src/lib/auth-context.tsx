@@ -35,7 +35,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 type HydratableUser = Pick<User, "uid" | "email" | "displayName" | "getIdTokenResult">;
 
 const ADMIN_EMAILS = new Set(
-  (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "vaibhavmaurya.1409@gmail.com,test12@gmail.com,vaibhav.test@codeorbit.in")
+  (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "vaibhavmaurya.1409@gmail.com,test12@gmail.com,vaibhav.test@codeorbit.in,vm3978257@gmail.com")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean)

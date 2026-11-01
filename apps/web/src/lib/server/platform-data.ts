@@ -610,14 +610,15 @@ const ensureLocalUser = (viewer: ViewerContext, store: LocalStorageSchema): Loca
       viewer.displayName?.trim() ||
       (viewer.email ? viewer.email.split("@")[0].replace(/[^a-zA-Z0-9-_ ]/g, "").trim() : "Developer") ||
       "Developer";
+    const isAdminEmail = isConfiguredAdminEmail(viewer.email);
     user = {
       id: randomUUID(),
       firebase_uid: viewer.uid || `local-${randomUUID()}`,
       email: (viewer.email || `${viewer.uid}@codeorbit.local`).toLowerCase(),
       display_name: defaultName,
       locale: "en",
-      role: "user",
-      is_admin: false,
+      role: isAdminEmail ? "admin" : "user",
+      is_admin: isAdminEmail,
       created_at: new Date().toISOString(),
     };
     store.users.push(user);
@@ -1547,7 +1548,7 @@ const getAdminEmails = (): Set<string> => {
   const envAdmins =
     process.env.ADMIN_EMAILS ||
     process.env.NEXT_PUBLIC_ADMIN_EMAILS ||
-    "vaibhavmaurya.1409@gmail.com,test12@gmail.com,vaibhav.test@codeorbit.in";
+    "vaibhavmaurya.1409@gmail.com,test12@gmail.com,vaibhav.test@codeorbit.in,vm3978257@gmail.com";
   return new Set(
     envAdmins
       .split(",")
