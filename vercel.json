@@ -3,6 +3,5 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "buildCommand": "npm run build --workspace @codeorbit/web",
-  "outputDirectory": "apps/web/.next",
   "devCommand": "npm run dev:web"
 }
