@@ -243,13 +243,7 @@ export const platformApi = {
   },
   async createBillingOrder(planId: PaidBillingPlanId): Promise<BillingOrder> {
     const payload = { planId: paidBillingPlanIdSchema.parse(planId) };
-    try {
-      return await postJson("/api/platform/billing/order", payload, billingOrderResponseSchema);
-    } catch (routeError) {
-      console.warn("Direct billing order route unavailable, attempting fallback:", routeError);
-      const response = await callFunction<typeof payload, unknown>("createBillingOrder", payload);
-      return billingOrderResponseSchema.parse(response);
-    }
+    return postJson("/api/platform/billing/order", payload, billingOrderResponseSchema);
   },
   async verifyBillingPayment(input: {
     orderId: string;
@@ -258,13 +252,7 @@ export const platformApi = {
     planId?: PaidBillingPlanId;
   }): Promise<BillingVerification> {
     const payload = billingVerificationInputSchema.parse(input);
-    try {
-      return await postJson("/api/platform/billing/verify", payload, billingVerificationResponseSchema);
-    } catch (routeError) {
-      console.warn("Direct billing verify route unavailable, attempting fallback:", routeError);
-      const response = await callFunction<typeof payload, unknown>("verifyBillingPayment", payload);
-      return billingVerificationResponseSchema.parse(response);
-    }
+    return postJson("/api/platform/billing/verify", payload, billingVerificationResponseSchema);
   },
   async runCode(input: CodeExecutionInput): Promise<RunCodeResponse> {
     const payload = runCodeInputSchema.parse(input);

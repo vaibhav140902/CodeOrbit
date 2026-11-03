@@ -120,7 +120,7 @@ export function PricingOverview() {
 
   const handlePaidCheckout = async (planId: PaidBillingPlanId) => {
     if (!authEnabled || !user?.email) {
-      requireSignedInWorkspace("paid");
+      router.push("/login?redirect=/pricing");
       return;
     }
 
@@ -274,10 +274,14 @@ export function PricingOverview() {
                   onClick={() => {
                     if (!plan.paid) {
                       if (!user) {
-                        requireSignedInWorkspace("free");
+                        router.push("/signup?redirect=/problems");
                         return;
                       }
                       router.push("/problems");
+                      return;
+                    }
+                    if (!user) {
+                      router.push("/login?redirect=/pricing");
                       return;
                     }
                     void handlePaidCheckout(plan.id as PaidBillingPlanId);
