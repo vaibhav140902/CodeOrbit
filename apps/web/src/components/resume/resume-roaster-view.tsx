@@ -688,6 +688,32 @@ export function ResumeRoasterView() {
               </div>
             )}
 
+            {/* Pro Upgrade Callout Banner */}
+            <div className="surface-soft mt-8 p-5 rounded-xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/50 to-blue-950/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                  ⚡ CodeOrbit Pro ATS Solution
+                </span>
+                <h4 className="text-base font-bold text-[color:var(--text-main)] mt-1">
+                  Fix All ATS Flaws in 1-Click with AI Resume Builder Pro
+                </h4>
+                <p className="text-xs text-soft mt-0.5">
+                  Export verified Harvard/Stanford single-column LaTeX & PDF formats tailored to {roastResult.targetCompany}&apos;s ATS filters.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href="/pricing"
+                  className="btn-primary text-xs font-semibold px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 whitespace-nowrap shadow-md shadow-cyan-500/20"
+                >
+                  ⚡ Get Pro Pass (₹499) →
+                </Link>
+                <Link href="/resume-builder" className="btn-secondary text-xs px-3.5 py-2">
+                  Open Free Builder
+                </Link>
+              </div>
+            </div>
+
             {/* Bottom Next-Step Action Bar */}
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-800">
               <span className="text-xs text-slate-400">

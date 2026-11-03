@@ -38,6 +38,34 @@ export default function DashboardPage() {
               </p>
             </section>
 
+            {/* Placement Sprint Pass & Pro Callout */}
+            <section className="relative overflow-hidden rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-blue-950/40 p-6 sm:p-7 shadow-lg shadow-cyan-950/10">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-2xl">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" /> Placement Season Sprint 2026
+                    </span>
+                    <span className="text-xs text-amber-400 font-semibold">⚡ Day-1 Hiring Drives Active</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-[color:var(--text-main)]">
+                    Upgrade to CodeOrbit Pro: 100+ Monaco Runs & Unlimited AI Mock Turns
+                  </h2>
+                  <p className="text-xs sm:text-sm text-soft leading-relaxed">
+                    Crack technical OA rounds with real-time Gemini Socratic code assistance, company hiring rubrics (Amazon, Google, TCS), and accredited placement proof scorecards. Starting at ₹499.
+                  </p>
+                </div>
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0">
+                  <Link
+                    href="/pricing"
+                    className="btn-primary whitespace-nowrap bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold px-6 py-3 rounded-xl text-sm shadow-lg shadow-cyan-500/25 transition-all"
+                  >
+                    ⚡ View Placement Pass (From ₹499) →
+                  </Link>
+                </div>
+              </div>
+            </section>
+
             <DashboardSpotlight />
 
             <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">

@@ -5,16 +5,17 @@ import {
   RateLimitError,
   rateLimitResponse,
 } from "@/lib/server/rate-limit";
-import { getViewerContextFromHeaders, recordInterviewSessionData } from "@/lib/server/platform-data";
+import { requireAuth, AuthenticationError } from "@/lib/server/auth-guard";
+import { recordInterviewSessionData } from "@/lib/server/platform-data";
 import { evaluateMockInterviewWithGemini } from "@/lib/server/mock-interview-ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const viewer = await getViewerContextFromHeaders(request.headers);
-
   try {
+    const viewer = await requireAuth(request.headers);
+
     // Enforce tier-aware rate limit (2/day for guest & free, 20/day for pro)
     await assertTierRateLimit(request, "mock_interview", viewer);
 
@@ -24,18 +25,22 @@ export async function POST(request: NextRequest) {
     const evaluation = await evaluateMockInterviewWithGemini(payload);
 
     // Persist session telemetry to feed candidate readiness score
-    if (viewer.uid || viewer.email) {
-      void recordInterviewSessionData(viewer, {
-        company: payload.company,
-        role: payload.role,
-        overallScore: evaluation.overallScore,
-        transcript: payload.transcript,
-        feedback: evaluation as unknown as Record<string, unknown>,
-      });
-    }
+    void recordInterviewSessionData(viewer, {
+      company: payload.company,
+      role: payload.role,
+      overallScore: evaluation.overallScore,
+      transcript: payload.transcript,
+      feedback: evaluation as unknown as Record<string, unknown>,
+    });
 
     return NextResponse.json(evaluation);
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(
+        { message: "Sign in required to evaluate AI Mock Interviews." },
+        { status: 401 }
+      );
+    }
     if (error instanceof RateLimitError) {
       return rateLimitResponse(error);
     }

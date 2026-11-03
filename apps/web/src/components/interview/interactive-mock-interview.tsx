@@ -9,6 +9,7 @@ import type {
   MockInterviewTurnMessage,
 } from "@codeorbit/schema";
 import { Button } from "@codeorbit/ui";
+import { usePlatformAuth } from "@/lib/auth-context";
 import { platformApi } from "@/lib/platform-api";
 
 interface SpeechRecognitionResultItem {
@@ -72,6 +73,7 @@ const INITIAL_LIVE_COACH: MockInterviewLiveResponse = {
 };
 
 export function InteractiveMockInterview() {
+  const { user } = usePlatformAuth();
   const [company, setCompany] = useState(TARGET_COMPANIES[0].name);
   const [role, setRole] = useState(TARGET_ROLES[0]);
   const [roundType, setRoundType] = useState<MockInterviewRoundType>("Technical DSA");
@@ -164,6 +166,11 @@ export function InteractiveMockInterview() {
 
   // Start new interview session
   const handleStartInterview = async () => {
+    if (!user) {
+      setErrorMessage("Sign in required: Please log in or create a free account to practice AI Mock Interviews.");
+      return;
+    }
+
     setSessionActive(true);
     setHistory([]);
     setScorecard(null);
@@ -193,7 +200,12 @@ export function InteractiveMockInterview() {
       speakText(opening.interviewerReply);
     } catch (err) {
       console.error("Failed to start mock session:", err);
-      setErrorMessage("Could not initialize interview turn. Please retry.");
+      const msg = (err as Error).message || "";
+      if (msg.includes("Sign in") || msg.includes("401") || msg.includes("Authentication")) {
+        setErrorMessage("Sign in required. Please log in to practice AI mock interviews.");
+      } else {
+        setErrorMessage("Could not initialize interview turn. Please retry.");
+      }
     } finally {
       setTurnLoading(false);
     }
@@ -201,6 +213,11 @@ export function InteractiveMockInterview() {
 
   // Send candidate turn
   const handleSendTurn = async (overrideMessage?: string, requestHint = false) => {
+    if (!user) {
+      setErrorMessage("Sign in required to continue this interview session.");
+      return;
+    }
+
     const msg = (overrideMessage ?? candidateDraft).trim();
     if (!msg && !requestHint) return;
 
@@ -330,11 +347,22 @@ export function InteractiveMockInterview() {
                 Practice multi-turn technical interviews aligned with specific hiring bars (Amazon Bar Raiser, Google Invariants, Flipkart Flash-Sale Scale, TCS Digital). Get real-time Socratic coaching and an accredited 5-dimension placement scorecard.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 border border-emerald-500/30">
-                ₹0 / $0 Free Practice Quota
-              </span>
-            </div>
+            {!user ? (
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400 border border-amber-500/30">
+                  🔒 Guest Mode (Sign in to practice)
+                </span>
+                <Link href="/login?redirect=/mock-interview" className="btn-secondary text-xs px-2.5 py-1">
+                  Log In
+                </Link>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 border border-emerald-500/30">
+                  ₹0 / $0 Free Practice Quota
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-6 md:grid-cols-3 border-t border-[color:var(--border)] pt-6">
@@ -403,12 +431,26 @@ export function InteractiveMockInterview() {
               </label>
             </div>
 
-            <Button
-              onClick={handleStartInterview}
-              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-6 py-2.5 rounded-lg transition-all"
-            >
-              Start {company} {roundType} Round →
-            </Button>
+            {!user ? (
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <span className="text-xs text-amber-400 font-medium">
+                  Sign in required to begin live AI coaching session.
+                </span>
+                <Link
+                  href="/login?redirect=/mock-interview"
+                  className="btn-primary bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-6 py-2.5 rounded-lg transition-all inline-flex items-center gap-2 text-sm shadow-md shadow-cyan-500/20"
+                >
+                  <span>🔒 Sign In to Start {company} Round →</span>
+                </Link>
+              </div>
+            ) : (
+              <Button
+                onClick={handleStartInterview}
+                className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-6 py-2.5 rounded-lg transition-all"
+              >
+                Start {company} {roundType} Round →
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -731,6 +773,27 @@ export function InteractiveMockInterview() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Pro Upsell Callout Banner on Scorecard */}
+          <div className="surface-soft p-5 rounded-xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/40 to-blue-950/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                ⚡ Placement Sprint Pass
+              </span>
+              <h4 className="text-base font-bold text-[color:var(--text-main)] mt-1">
+                Want Unlimited Company Mock Interviews & 1-on-1 Socratic Rubrics?
+              </h4>
+              <p className="text-xs text-soft mt-0.5">
+                Unlock unlimited AI interview turns for Amazon, Google, Flipkart, and TCS with CodeOrbit Pro (from ₹499/mo).
+              </p>
+            </div>
+            <Link
+              href="/pricing"
+              className="btn-primary text-xs font-semibold px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 whitespace-nowrap shadow-lg shadow-cyan-500/20 shrink-0"
+            >
+              ⚡ Upgrade to Pro →
+            </Link>
           </div>
 
           {/* Actions */}

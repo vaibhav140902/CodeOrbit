@@ -3,6 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
 import { waitlistSubmissionSchema } from "@codeorbit/schema";
+import {
+  assertTierRateLimit,
+  RateLimitError,
+  rateLimitResponse,
+} from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +24,15 @@ const isLocalHost = (host: string | null) => {
 };
 
 export async function POST(request: Request) {
+  try {
+    await assertTierRateLimit(request, "billing_action", null);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return rateLimitResponse(error);
+    }
+    throw error;
+  }
+
   const input = await request.json().catch(() => null);
   const parsed = waitlistSubmissionSchema.safeParse({
     ...input,

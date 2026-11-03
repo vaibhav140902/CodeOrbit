@@ -5,7 +5,7 @@ import {
   RateLimitError,
   rateLimitResponse,
 } from "@/lib/server/rate-limit";
-import { getViewerContextFromHeaders } from "@/lib/server/platform-data";
+import { requireAuth, AuthenticationError } from "@/lib/server/auth-guard";
 import { generateMockInterviewTurn } from "@/lib/server/mock-interview-ai";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const viewer = await getViewerContextFromHeaders(request.headers);
+    const viewer = await requireAuth(request.headers);
     await assertTierRateLimit(request, "mock_interview_turn", viewer);
 
     const payload = mockInterviewTurnInputSchema.parse(await request.json());
@@ -21,6 +21,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(turnResponse);
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(
+        { message: "Sign in required to practice AI Mock Interviews." },
+        { status: 401 }
+      );
+    }
     if (error instanceof RateLimitError) {
       return rateLimitResponse(error);
     }

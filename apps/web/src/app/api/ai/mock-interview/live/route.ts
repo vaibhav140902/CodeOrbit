@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mockInterviewInputSchema, mockInterviewLiveResponseSchema } from "@codeorbit/schema";
-import { AccessControlError, assertPaidFeatureAccess } from "@/lib/server/access-control";
+import { AccessControlError } from "@/lib/server/access-control";
 import {
   assertTierRateLimit,
   RateLimitError,
-  rateLimitResponse,
 } from "@/lib/server/rate-limit";
+import { requireAuth, AuthenticationError } from "@/lib/server/auth-guard";
 import { callGeminiJson, sanitizePromptInput } from "@/lib/server/gemini";
-import { getViewerContextFromHeaders } from "@/lib/server/platform-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const viewer = await getViewerContextFromHeaders(request.headers);
+    const viewer = await requireAuth(request.headers);
     await assertTierRateLimit(request, "mock_interview_live", viewer);
 
     const payload = mockInterviewInputSchema.parse(await request.json());
@@ -41,6 +40,12 @@ export async function POST(request: NextRequest) {
       provider: "gemini",
     });
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(
+        { message: "Sign in required to practice AI Mock Interviews." },
+        { status: 401 }
+      );
+    }
     if (error instanceof RateLimitError) {
       return NextResponse.json(
         {

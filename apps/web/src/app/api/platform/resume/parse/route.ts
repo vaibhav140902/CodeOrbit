@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  assertTierRateLimit,
+  RateLimitError,
+  rateLimitResponse,
+} from "@/lib/server/rate-limit";
+import { extractViewerFromHeaders } from "@/lib/server/auth-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
+    const viewer = await extractViewerFromHeaders(request.headers);
+    await assertTierRateLimit(request, "resume_generation", viewer);
+
     const formData = await request.formData();
     const file = formData.get("file");
 
@@ -71,6 +80,9 @@ export async function POST(request: NextRequest) {
       text: cleanedText,
     });
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      return rateLimitResponse(error);
+    }
     console.error("Resume file parsing error:", error);
     return NextResponse.json(
       { message: "Failed to parse document. Please ensure the file is not password-protected or corrupted." },

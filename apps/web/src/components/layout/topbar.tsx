@@ -68,7 +68,7 @@ export function Topbar() {
           </Link>
         </div>
 
-        <nav className="hidden items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)]/90 px-3 py-1 lg:flex shadow-sm">
+        <nav className="hidden items-center gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-surface-soft)]/90 px-3 py-1 xl:flex shadow-sm">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -81,7 +81,7 @@ export function Topbar() {
             >
               <span>{item.label}</span>
               {item.href === "/resume-roaster" && (
-                <span className="rounded-full bg-rose-500/20 border border-rose-500/30 px-1.5 py-0.2 text-[9px] font-bold text-rose-300 uppercase">
+                <span className="rounded-full bg-rose-500/20 border border-rose-500/30 px-1.5 py-0.2 text-[9px] font-bold text-rose-500 dark:text-rose-300 uppercase">
                   Free
                 </span>
               )}
@@ -89,7 +89,15 @@ export function Topbar() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="hidden items-center gap-2 xl:flex">
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-orange-500/15 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-300 transition hover:border-amber-400 hover:from-amber-500/25 hover:to-orange-500/25 shadow-xs"
+          >
+            <span>⚡</span>
+            <span>Upgrade</span>
+          </Link>
+
           {user ? (
             <Link href="/dashboard" className="btn-secondary text-sm">
               Dashboard
@@ -114,7 +122,7 @@ export function Topbar() {
 
           {user ? (
             <>
-              <span className="hidden max-w-[180px] truncate text-xs text-muted xl:block">
+              <span className="hidden max-w-[180px] truncate text-xs text-muted 2xl:block">
                 {profile?.displayName ?? user.email}
               </span>
               <button
@@ -140,7 +148,7 @@ export function Topbar() {
 
         <button
           onClick={() => setMobileOpen((current) => !current)}
-          className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold lg:hidden rounded-lg border border-[color:var(--border)]"
+          className="btn-ghost flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold xl:hidden rounded-lg border border-[color:var(--border)]"
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
         >
@@ -150,21 +158,34 @@ export function Topbar() {
       </div>
 
       {mobileOpen ? (
-        <div className="border-t border-[color:var(--border)] bg-[color:var(--bg-elevated)]/98 px-4 py-4 lg:hidden shadow-xl backdrop-blur-2xl animate-in slide-in-from-top-2">
+        <div className="border-t border-[color:var(--border)] bg-[color:var(--bg-elevated)]/98 px-4 py-4 xl:hidden shadow-xl backdrop-blur-2xl animate-in slide-in-from-top-2">
           <div className="mx-auto flex max-w-[1180px] flex-col gap-2">
+            <Link
+              href="/pricing"
+              className="flex items-center justify-between rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/10 px-4 py-3 text-xs font-bold text-amber-600 dark:text-amber-300 shadow-sm transition hover:border-amber-400"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-base">⚡</span>
+                <span>Placement Sprint Pass / Pro</span>
+              </span>
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-extrabold uppercase text-amber-700 dark:text-amber-200">
+                Unlock Pro
+              </span>
+            </Link>
+
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`rounded-xl px-4 py-2.5 text-xs font-bold transition flex items-center justify-between ${
                   isActive(item)
-                    ? "bg-[color:var(--accent-soft)] text-cyan-300 border border-cyan-500/30 font-extrabold"
-                    : "surface-soft text-slate-300 hover:text-white"
+                    ? "bg-[color:var(--accent-soft)] text-[color:var(--text-main)] border border-[color:var(--accent)]/30 font-extrabold"
+                    : "surface-soft text-[color:var(--text-soft)] hover:text-[color:var(--text-main)]"
                 }`}
               >
                 <span>{item.label}</span>
                 {item.href === "/resume-roaster" && (
-                  <span className="rounded-full bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-300 uppercase">
+                  <span className="rounded-full bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-500 dark:text-rose-300 uppercase">
                     Free
                   </span>
                 )}
