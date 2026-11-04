@@ -62,7 +62,7 @@ export default async function CompanyPage({
             <span className="eyebrow-chip">{company.geographyRelevance}</span>
             <h1 className="mt-5 text-4xl font-bold sm:text-5xl">{company.name} interview track</h1>
             <p className="section-copy">{company.headline}</p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid gap-3 sm:grid-cols-4">
               <div className="surface-soft p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted">Hiring focus</p>
                 <p className="mt-2 text-sm font-semibold text-soft">{company.hiringFocus}</p>
@@ -70,6 +70,10 @@ export default async function CompanyPage({
               <div className="surface-soft p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted">Roles covered</p>
                 <p className="mt-2 text-sm font-semibold text-soft">{linkedRoles.length}</p>
+              </div>
+              <div className="surface-soft p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted">Last Reviewed</p>
+                <p className="mt-2 text-sm font-semibold text-emerald-400">2025–2026 Campus Season</p>
               </div>
               <div className="surface-soft p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted">Freshness</p>

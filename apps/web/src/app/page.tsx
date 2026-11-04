@@ -10,6 +10,7 @@ import {
   trustPrinciples,
 } from "@/data/hiring-os";
 import { PREP_QUESTIONS } from "@/data/prep-catalog";
+import { PLATFORM_METRICS, HONEST_MARKETING_CLAIMS } from "@/data/platform-config";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/site-config";
 
 const featuredProblems = PREP_QUESTIONS.slice(0, 4);
@@ -58,10 +59,26 @@ const pillars = [
 ];
 
 const platformStats = [
-  { value: "1,200+", label: "Curated Problems", sub: "FAANG & Tier-1 Company Tags" },
-  { value: "<200ms", label: "Sandbox Execution", sub: "Zero-Latency Local + Judge0" },
-  { value: "98.4%", label: "ATS Parse Accuracy", sub: "Deep PDF & DOCX Extraction" },
-  { value: "100% Free", label: "Public Access", sub: "No Credit Card or Gatekeeping" },
+  {
+    value: `${PLATFORM_METRICS.interactiveProblemCount}`,
+    label: "Interactive Challenges",
+    sub: `${PLATFORM_METRICS.curriculumQuestionCount} Company Prompts`,
+  },
+  {
+    value: "Isolated",
+    label: "Judge0 Code Runner",
+    sub: `${PLATFORM_METRICS.supportedLanguages.join(", ")}`,
+  },
+  {
+    value: "Direct",
+    label: "ATS Document Parser",
+    sub: "PDF & DOCX Plaintext Extraction",
+  },
+  {
+    value: "Free Core",
+    label: "Public Practice",
+    sub: "Pro Upgrades for Live AI Mocks",
+  },
 ];
 
 export default function HomePage() {
@@ -184,7 +201,7 @@ export default function HomePage() {
                 </p>
               </div>
               <Link href="/problems" className="btn-secondary text-xs sm:text-sm self-start sm:self-auto">
-                Explore Full Bank ({PREP_QUESTIONS.length}+ problems) →
+                Explore Full Bank ({PLATFORM_METRICS.curriculumQuestionCount} curated questions) →
               </Link>
             </div>
 
@@ -275,7 +292,7 @@ export default function HomePage() {
                       Did You Know?
                     </p>
                     <p className="text-xs text-soft mt-0.5">
-                      78% of Tier-2 college candidates fail the initial ATS resume screen, never even reaching the coding round.
+                      {HONEST_MARKETING_CLAIMS.atsScreenContext}
                     </p>
                   </div>
                 </div>

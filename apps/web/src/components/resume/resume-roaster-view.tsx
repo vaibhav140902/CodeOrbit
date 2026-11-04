@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@codeorbit/ui";
 import type { ResumeRoasterResponse } from "@codeorbit/schema";
 import { platformApi } from "@/lib/platform-api";
+import { PLATFORM_METRICS, HONEST_MARKETING_CLAIMS } from "@/data/platform-config";
 
 const SAMPLE_RESUMES = {
   fresher: `ANANYA SHARMA
@@ -66,7 +67,7 @@ Online Food Ordering System
 
 const COMPANY_OPTIONS = [
   { value: "Amazon", label: "Amazon", sub: "SDE-1 / WOW / Intern" },
-  { value: "TCS", label: "TCS", sub: "Digital & Prime (₹7–9 LPA)" },
+  { value: "TCS", label: "TCS", sub: "Digital & Prime Roles" },
   { value: "Infosys", label: "Infosys", sub: "Specialist Programmer (SP)" },
   { value: "Flipkart", label: "Flipkart", sub: "SDE-1 / GRiD Challenge" },
   { value: "Google", label: "Google", sub: "Software Engineer / L3" },
@@ -226,14 +227,13 @@ export function ResumeRoasterView() {
           </h1>
 
           <p className="mt-3 max-w-2xl mx-auto text-sm sm:text-base text-slate-300 leading-relaxed">
-            Over 85% of fresher tech resumes get discarded before a human recruiter even sees them.
-            Get an instant, brutal 0–100 ATS score tailored for Indian campus placements & global tech drives.
+            {HONEST_MARKETING_CLAIMS.resumeDiscardContext} Get an instant, actionable 0–100 ATS score tailored for Indian campus placements &amp; global tech drives.
           </p>
 
           {/* Quick Stats Badges */}
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400">
             <span className="flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-950/60 px-3 py-1">
-              ✓ 9 Localized Company Profiles (Amazon, TCS, Infosys, Flipkart)
+              ✓ {PLATFORM_METRICS.companyProfileCount} Localized Company Profiles (Amazon, TCS, Infosys, Flipkart, Google, Microsoft, Swiggy, Razorpay)
             </span>
             <span className="flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-950/60 px-3 py-1">
               ✓ PDF & Word Document Extraction

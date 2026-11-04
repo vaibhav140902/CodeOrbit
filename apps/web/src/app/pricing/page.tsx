@@ -79,7 +79,6 @@ export default function PricingPage() {
                 <li>- CodeOrbit does not fabricate placements, salary outcomes, or employer endorsements.</li>
                 <li>- Recruiter and campus plans are beta-access routes and are clearly labeled that way.</li>
                 <li>- Public proof sharing is opt-in. Private preparation remains the default mode.</li>
-                <li>- Live billing and beta storage still depend on server credentials in the deployment environment.</li>
               </ul>
             </article>
           </section>
