@@ -1000,6 +1000,20 @@ export const getActivitySummaryData = async (viewer: ViewerContext): Promise<Act
   }
 };
 
+export const maskIfEmail = (name: string): string => {
+  if (!name) return "CodeOrbit Candidate";
+  const trimmed = name.trim();
+  if (trimmed.includes("@")) {
+    const [local, domain] = trimmed.split("@");
+    if (!domain) return trimmed;
+    if (local.length <= 2) {
+      return `${local[0] || "*"}***@${domain}`;
+    }
+    return `${local.slice(0, 2)}***${local.slice(-1)}@${domain}`;
+  }
+  return trimmed;
+};
+
 export const getLeaderboardSummaryData = async (viewer?: ViewerContext): Promise<LeaderboardSummary> => {
   if (!hasSupabase()) {
     const store = readLocalStorage();
@@ -1021,7 +1035,7 @@ export const getLeaderboardSummaryData = async (viewer?: ViewerContext): Promise
         } else if (solved > 0) {
           baseEntries.push({
             uid: user.firebase_uid,
-            displayName: user.display_name,
+            displayName: maskIfEmail(user.display_name),
             solvedCount: solved,
             streak: Math.min(solved, 7),
             rank: 999,
@@ -1095,7 +1109,7 @@ export const getLeaderboardSummaryData = async (viewer?: ViewerContext): Promise
       }
       return {
         uid: u?.firebase_uid || userId,
-        displayName: u?.display_name || "CodeOrbit Developer",
+        displayName: maskIfEmail(u?.display_name || "CodeOrbit Developer"),
         solvedCount: count,
         streak: Math.min(count, 14),
         rank,

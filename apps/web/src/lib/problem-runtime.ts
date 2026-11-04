@@ -21,7 +21,7 @@ const fallbackSpec = (problem: ProblemDetail): ProblemRuntimeSpec => ({
   templates: {
     typescript: `const fs = require("fs");\nconst input = fs.readFileSync(0, "utf8").trim().split(/\\r?\\n/);\n\nfunction solve(lines: string[]): string {\n  // TODO: parse lines and return the answer as a string\n  return lines.join("\\n");\n}\n\nconsole.log(solve(input));\n`,
     javascript: `const fs = require("fs");\nconst input = fs.readFileSync(0, "utf8").trim().split(/\\r?\\n/);\n\nfunction solve(lines) {\n  // TODO: parse lines and return the answer as a string\n  return lines.join("\\n");\n}\n\nconsole.log(solve(input));\n`,
-    python: `import sys\n\n\ndef solve(lines: list[str]) -> str:\n    # TODO: parse lines and return the answer as a string\n    return \"\\n\".join(lines)\n\n\nif __name__ == \"__main__\":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    print(solve(lines))\n`,
+    python: `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n\ndef solve(lines: List[str]) -> str:\n    # TODO: parse lines and return the answer as a string\n    return \"\\n\".join(lines)\n\n\nif __name__ == \"__main__\":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    print(solve(lines))\n`,
     java: `import java.io.BufferedReader;\nimport java.io.InputStreamReader;\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class Main {\n  static String solve(List<String> lines) {\n    // TODO: parse lines and return the answer as a string\n    return String.join(\"\\n\", lines);\n  }\n\n  public static void main(String[] args) throws Exception {\n    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));\n    List<String> lines = new ArrayList<>();\n    String line;\n    while ((line = reader.readLine()) != null) {\n      if (!line.trim().isEmpty()) {\n        lines.add(line.trim());\n      }\n    }\n    System.out.print(solve(lines));\n  }\n}\n`,
     cpp: `#include <iostream>\n#include <string>\n#include <vector>\n\nstd::string solve(const std::vector<std::string>& lines) {\n  // TODO: parse lines and return the answer as a string\n  std::string out;\n  for (size_t i = 0; i < lines.size(); ++i) {\n    if (i) out += "\\n";\n    out += lines[i];\n  }\n  return out;\n}\n\nint main() {\n  std::ios::sync_with_stdio(false);\n  std::cin.tie(nullptr);\n\n  std::vector<std::string> lines;\n  std::string line;\n  while (std::getline(std::cin, line)) {\n    if (!line.empty()) {\n      lines.push_back(line);\n    }\n  }\n\n  std::cout << solve(lines);\n  return 0;\n}\n`,
   },
@@ -35,7 +35,7 @@ const specs: Record<string, ProblemRuntimeSpec> = {
     templates: {
       typescript: `const fs = require("fs");\n\nfunction solve(nums: number[], target: number): number[] {\n  // TODO: return the two indices whose values add up to target\n  return [];\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst nums = lines[0] ? lines[0].trim().split(/\\s+/).map(Number) : [];\nconst target = lines[1] ? Number(lines[1]) : 0;\nconst answer = solve(nums, target);\nconsole.log(answer.join(" "));\n`,
       javascript: `const fs = require("fs");\n\nfunction solve(nums, target) {\n  // TODO: return the two indices whose values add up to target\n  return [];\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst nums = lines[0] ? lines[0].trim().split(/\\s+/).map(Number) : [];\nconst target = lines[1] ? Number(lines[1]) : 0;\nconst answer = solve(nums, target);\nconsole.log(answer.join(" "));\n`,
-      python: `import sys\n\n\ndef solve(nums: list[int], target: int) -> list[int]:\n    # TODO: return the two indices whose values add up to target\n    return []\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    nums = list(map(int, lines[0].split())) if lines else []\n    target = int(lines[1]) if len(lines) > 1 else 0\n    answer = solve(nums, target)\n    print(" ".join(map(str, answer)))\n`,
+      python: `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n\ndef solve(nums: List[int], target: int) -> List[int]:\n    # TODO: return the two indices whose values add up to target\n    return []\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    nums = list(map(int, lines[0].split())) if lines else []\n    target = int(lines[1]) if len(lines) > 1 else 0\n    answer = solve(nums, target)\n    print(" ".join(map(str, answer)))\n`,
       java: `import java.io.BufferedReader;\nimport java.io.InputStreamReader;\nimport java.util.Arrays;\n\npublic class Main {\n  static int[] solve(int[] nums, int target) {\n    // TODO: return the two indices whose values add up to target\n    return new int[0];\n  }\n\n  public static void main(String[] args) throws Exception {\n    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));\n    String first = reader.readLine();\n    String second = reader.readLine();\n    int[] nums = first == null || first.trim().isEmpty()\n      ? new int[0]\n      : Arrays.stream(first.trim().split(\"\\\\s+\")).mapToInt(Integer::parseInt).toArray();\n    int target = second == null || second.trim().isEmpty() ? 0 : Integer.parseInt(second.trim());\n    int[] answer = solve(nums, target);\n    StringBuilder out = new StringBuilder();\n    for (int i = 0; i < answer.length; i++) {\n      if (i > 0) out.append(' ');\n      out.append(answer[i]);\n    }\n    System.out.print(out.toString());\n  }\n}\n`,
       cpp: `#include <iostream>\n#include <sstream>\n#include <string>\n#include <vector>\n\nstd::vector<int> solve(const std::vector<int>& nums, int target) {\n  // TODO: return the two indices whose values add up to target\n  return {};\n}\n\nint main() {\n  std::ios::sync_with_stdio(false);\n  std::cin.tie(nullptr);\n\n  std::string numsLine;\n  std::string targetLine;\n  std::getline(std::cin, numsLine);\n  std::getline(std::cin, targetLine);\n\n  std::stringstream numsStream(numsLine);\n  std::vector<int> nums;\n  int value;\n  while (numsStream >> value) nums.push_back(value);\n  int target = targetLine.empty() ? 0 : std::stoi(targetLine);\n\n  const auto answer = solve(nums, target);\n  for (size_t i = 0; i < answer.size(); ++i) {\n    if (i) std::cout << ' ';\n    std::cout << answer[i];\n  }\n  return 0;\n}\n`,
     },
@@ -47,7 +47,7 @@ const specs: Record<string, ProblemRuntimeSpec> = {
     templates: {
       typescript: `const fs = require("fs");\n\nfunction solve(text: string): string {\n  // TODO: return the reversed string\n  return text;\n}\n\nconst text = fs.readFileSync(0, "utf8").trim();\nconsole.log(solve(text));\n`,
       javascript: `const fs = require("fs");\n\nfunction solve(text) {\n  // TODO: return the reversed string\n  return text;\n}\n\nconst text = fs.readFileSync(0, "utf8").trim();\nconsole.log(solve(text));\n`,
-      python: `import sys\n\n\ndef solve(text: str) -> str:\n    # TODO: return the reversed string\n    return text\n\n\nif __name__ == "__main__":\n    text = sys.stdin.read().strip()\n    print(solve(text))\n`,
+      python: `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n\ndef solve(text: str) -> str:\n    # TODO: return the reversed string\n    return text\n\n\nif __name__ == "__main__":\n    text = sys.stdin.read().strip()\n    print(solve(text))\n`,
       java: `import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n  static String solve(String text) {\n    // TODO: return the reversed string\n    return text;\n  }\n\n  public static void main(String[] args) throws Exception {\n    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));\n    String text = reader.readLine();\n    System.out.print(solve(text == null ? \"\" : text.trim()));\n  }\n}\n`,
       cpp: `#include <iostream>\n#include <string>\n\nstd::string solve(const std::string& text) {\n  // TODO: return the reversed string\n  return text;\n}\n\nint main() {\n  std::ios::sync_with_stdio(false);\n  std::cin.tie(nullptr);\n\n  std::string text;\n  std::getline(std::cin, text);\n  std::cout << solve(text);\n  return 0;\n}\n`,
     },
@@ -59,7 +59,7 @@ const specs: Record<string, ProblemRuntimeSpec> = {
     templates: {
       typescript: `const fs = require("fs");\n\nfunction solve(text: string): boolean {\n  // TODO: return true if the bracket string is valid\n  return false;\n}\n\nconst text = fs.readFileSync(0, "utf8").trim();\nconsole.log(String(solve(text)));\n`,
       javascript: `const fs = require("fs");\n\nfunction solve(text) {\n  // TODO: return true if the bracket string is valid\n  return false;\n}\n\nconst text = fs.readFileSync(0, "utf8").trim();\nconsole.log(String(solve(text)));\n`,
-      python: `import sys\n\n\ndef solve(text: str) -> bool:\n    # TODO: return True if the bracket string is valid\n    return False\n\n\nif __name__ == "__main__":\n    text = sys.stdin.read().strip()\n    print(str(solve(text)).lower())\n`,
+      python: `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n\ndef solve(text: str) -> bool:\n    # TODO: return True if the bracket string is valid\n    return False\n\n\nif __name__ == "__main__":\n    text = sys.stdin.read().strip()\n    print(str(solve(text)).lower())\n`,
       java: `import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n  static boolean solve(String text) {\n    // TODO: return true if the bracket string is valid\n    return false;\n  }\n\n  public static void main(String[] args) throws Exception {\n    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));\n    String text = reader.readLine();\n    System.out.print(Boolean.toString(solve(text == null ? \"\" : text.trim())));\n  }\n}\n`,
       cpp: `#include <iostream>\n#include <string>\n\nbool solve(const std::string& text) {\n  // TODO: return true if the bracket string is valid\n  return false;\n}\n\nint main() {\n  std::ios::sync_with_stdio(false);\n  std::cin.tie(nullptr);\n\n  std::string text;\n  std::getline(std::cin, text);\n  std::cout << (solve(text) ? "true" : "false");\n  return 0;\n}\n`,
     },
@@ -71,7 +71,7 @@ const specs: Record<string, ProblemRuntimeSpec> = {
     templates: {
       typescript: `const fs = require("fs");\n\ntype Interval = [number, number];\n\nfunction solve(intervals: Interval[]): Interval[] {\n  // TODO: merge all overlapping intervals\n  return intervals;\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst n = lines[0] ? Number(lines[0]) : 0;\nconst intervals: Interval[] = [];\nfor (let i = 1; i <= n; i += 1) {\n  const [start, end] = (lines[i] ?? "").trim().split(/\\s+/).map(Number);\n  intervals.push([start, end]);\n}\nconst answer = solve(intervals);\nconsole.log(answer.map((interval) => interval.join(" ")).join("\\n"));\n`,
       javascript: `const fs = require("fs");\n\nfunction solve(intervals) {\n  // TODO: merge all overlapping intervals\n  return intervals;\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst n = lines[0] ? Number(lines[0]) : 0;\nconst intervals = [];\nfor (let i = 1; i <= n; i += 1) {\n  const [start, end] = (lines[i] ?? "").trim().split(/\\s+/).map(Number);\n  intervals.push([start, end]);\n}\nconst answer = solve(intervals);\nconsole.log(answer.map((interval) => interval.join(" ")).join("\\n"));\n`,
-      python: `import sys\n\n\ndef solve(intervals: list[tuple[int, int]]) -> list[tuple[int, int]]:\n    # TODO: merge all overlapping intervals\n    return intervals\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    n = int(lines[0]) if lines else 0\n    intervals = []\n    for i in range(1, n + 1):\n      start, end = map(int, lines[i].split())\n      intervals.append((start, end))\n    answer = solve(intervals)\n    print(\"\\n\".join(f\"{start} {end}\" for start, end in answer))\n`,
+      python: `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n\ndef solve(intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:\n    # TODO: merge all overlapping intervals\n    return intervals\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    n = int(lines[0]) if lines else 0\n    intervals = []\n    for i in range(1, n + 1):\n      start, end = map(int, lines[i].split())\n      intervals.append((start, end))\n    answer = solve(intervals)\n    print(\"\\n\".join(f\"{start} {end}\" for start, end in answer))\n`,
       java: `import java.io.BufferedReader;\nimport java.io.InputStreamReader;\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class Main {\n  static List<int[]> solve(List<int[]> intervals) {\n    // TODO: merge all overlapping intervals\n    return intervals;\n  }\n\n  public static void main(String[] args) throws Exception {\n    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));\n    int n = Integer.parseInt(reader.readLine().trim());\n    List<int[]> intervals = new ArrayList<>();\n    for (int i = 0; i < n; i++) {\n      String[] parts = reader.readLine().trim().split(\"\\\\s+\");\n      intervals.add(new int[] { Integer.parseInt(parts[0]), Integer.parseInt(parts[1]) });\n    }\n    List<int[]> answer = solve(intervals);\n    StringBuilder out = new StringBuilder();\n    for (int i = 0; i < answer.size(); i++) {\n      if (i > 0) out.append(\"\\n\");\n      out.append(answer.get(i)[0]).append(' ').append(answer.get(i)[1]);\n    }\n    System.out.print(out.toString());\n  }\n}\n`,
       cpp: `#include <iostream>\n#include <vector>\n#include <utility>\n\nstd::vector<std::pair<int, int>> solve(const std::vector<std::pair<int, int>>& intervals) {\n  // TODO: merge all overlapping intervals\n  return intervals;\n}\n\nint main() {\n  std::ios::sync_with_stdio(false);\n  std::cin.tie(nullptr);\n\n  int n = 0;\n  std::cin >> n;\n  std::vector<std::pair<int, int>> intervals;\n  for (int i = 0; i < n; ++i) {\n    int start = 0;\n    int end = 0;\n    std::cin >> start >> end;\n    intervals.push_back({start, end});\n  }\n  const auto answer = solve(intervals);\n  for (size_t i = 0; i < answer.size(); ++i) {\n    if (i) std::cout << "\\n";\n    std::cout << answer[i].first << ' ' << answer[i].second;\n  }\n  return 0;\n}\n`,
     },
@@ -83,7 +83,7 @@ const specs: Record<string, ProblemRuntimeSpec> = {
     templates: {
       typescript: `const fs = require("fs");\n\nfunction solve(nums: number[], target: number): number {\n  // TODO: return the index of target or -1\n  return -1;\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst nums = lines[0] ? lines[0].trim().split(/\\s+/).map(Number) : [];\nconst target = lines[1] ? Number(lines[1]) : 0;\nconsole.log(String(solve(nums, target)));\n`,
       javascript: `const fs = require("fs");\n\nfunction solve(nums, target) {\n  // TODO: return the index of target or -1\n  return -1;\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst nums = lines[0] ? lines[0].trim().split(/\\s+/).map(Number) : [];\nconst target = lines[1] ? Number(lines[1]) : 0;\nconsole.log(String(solve(nums, target)));\n`,
-      python: `import sys\n\n\ndef solve(nums: list[int], target: int) -> int:\n    # TODO: return the index of target or -1\n    return -1\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    nums = list(map(int, lines[0].split())) if lines else []\n    target = int(lines[1]) if len(lines) > 1 else 0\n    print(solve(nums, target))\n`,
+      python: `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n\ndef solve(nums: List[int], target: int) -> int:\n    # TODO: return the index of target or -1\n    return -1\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    nums = list(map(int, lines[0].split())) if lines else []\n    target = int(lines[1]) if len(lines) > 1 else 0\n    print(solve(nums, target))\n`,
       java: `import java.io.BufferedReader;\nimport java.io.InputStreamReader;\nimport java.util.Arrays;\n\npublic class Main {\n  static int solve(int[] nums, int target) {\n    // TODO: return the index of target or -1\n    return -1;\n  }\n\n  public static void main(String[] args) throws Exception {\n    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));\n    String first = reader.readLine();\n    String second = reader.readLine();\n    int[] nums = first == null || first.trim().isEmpty()\n      ? new int[0]\n      : Arrays.stream(first.trim().split(\"\\\\s+\")).mapToInt(Integer::parseInt).toArray();\n    int target = second == null || second.trim().isEmpty() ? 0 : Integer.parseInt(second.trim());\n    System.out.print(solve(nums, target));\n  }\n}\n`,
       cpp: `#include <iostream>\n#include <sstream>\n#include <string>\n#include <vector>\n\nint solve(const std::vector<int>& nums, int target) {\n  // TODO: return the index of target or -1\n  return -1;\n}\n\nint main() {\n  std::ios::sync_with_stdio(false);\n  std::cin.tie(nullptr);\n\n  std::string numsLine;\n  std::string targetLine;\n  std::getline(std::cin, numsLine);\n  std::getline(std::cin, targetLine);\n\n  std::stringstream numsStream(numsLine);\n  std::vector<int> nums;\n  int value;\n  while (numsStream >> value) nums.push_back(value);\n  int target = targetLine.empty() ? 0 : std::stoi(targetLine);\n  std::cout << solve(nums, target);\n  return 0;\n}\n`,
     },
@@ -95,7 +95,7 @@ const specs: Record<string, ProblemRuntimeSpec> = {
     templates: {
       typescript: `const fs = require("fs");\n\nfunction solve(grid: string[]): number {\n  // TODO: return the number of islands\n  return 0;\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst [rows] = lines[0] ? lines[0].trim().split(/\\s+/).map(Number) : [0, 0];\nconst grid = lines.slice(1, rows + 1).map((line) => line.trim());\nconsole.log(String(solve(grid)));\n`,
       javascript: `const fs = require("fs");\n\nfunction solve(grid) {\n  // TODO: return the number of islands\n  return 0;\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst [rows] = lines[0] ? lines[0].trim().split(/\\s+/).map(Number) : [0, 0];\nconst grid = lines.slice(1, rows + 1).map((line) => line.trim());\nconsole.log(String(solve(grid)));\n`,
-      python: `import sys\n\n\ndef solve(grid: list[str]) -> int:\n    # TODO: return the number of islands\n    return 0\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    first = list(map(int, lines[0].split())) if lines else [0, 0]\n    rows = first[0] if first else 0\n    grid = [lines[i].strip() for i in range(1, rows + 1)]\n    print(solve(grid))\n`,
+      python: `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n\ndef solve(grid: List[str]) -> int:\n    # TODO: return the number of islands\n    return 0\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    first = list(map(int, lines[0].split())) if lines else [0, 0]\n    rows = first[0] if first else 0\n    grid = [lines[i].strip() for i in range(1, rows + 1)]\n    print(solve(grid))\n`,
       java: `import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n  static int solve(String[] grid) {\n    // TODO: return the number of islands\n    return 0;\n  }\n\n  public static void main(String[] args) throws Exception {\n    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));\n    String[] dims = reader.readLine().trim().split(\"\\\\s+\");\n    int rows = Integer.parseInt(dims[0]);\n    String[] grid = new String[rows];\n    for (int i = 0; i < rows; i++) {\n      grid[i] = reader.readLine().trim();\n    }\n    System.out.print(solve(grid));\n  }\n}\n`,
       cpp: `#include <iostream>\n#include <string>\n#include <vector>\n\nint solve(const std::vector<std::string>& grid) {\n  // TODO: return the number of islands\n  return 0;\n}\n\nint main() {\n  std::ios::sync_with_stdio(false);\n  std::cin.tie(nullptr);\n\n  int rows = 0;\n  int cols = 0;\n  std::cin >> rows >> cols;\n  std::vector<std::string> grid(rows);\n  for (int i = 0; i < rows; ++i) {\n    std::cin >> grid[i];\n  }\n  std::cout << solve(grid);\n  return 0;\n}\n`,
     },
@@ -131,7 +131,9 @@ const s = lines[0] ?? "";
 const t = lines[1] ?? "";
 console.log(String(solve(s, t)));
 `,
-      python: `import sys
+      python: `from __future__ import annotations
+import sys
+from typing import List, Dict, Optional, Tuple, Set
 
 
 def solve(s: str, t: str) -> bool:
@@ -212,10 +214,12 @@ const raw = fs.readFileSync(0, "utf8").trim();
 const nums = raw ? raw.split(/\s+/).map(Number) : [];
 console.log(String(solve(nums)));
 `,
-      python: `import sys
+      python: `from __future__ import annotations
+import sys
+from typing import List, Dict, Optional, Tuple, Set
 
 
-def solve(nums: list[int]) -> int:
+def solve(nums: List[int]) -> int:
     # TODO: return the maximum subarray sum
     return 0
 
@@ -296,7 +300,9 @@ function solve(text) {
 const text = fs.readFileSync(0, "utf8").trim();
 console.log(String(solve(text)));
 `,
-      python: `import sys
+      python: `from __future__ import annotations
+import sys
+from typing import List, Dict, Optional, Tuple, Set
 
 
 def solve(text: str) -> int:
@@ -371,10 +377,12 @@ const raw = fs.readFileSync(0, "utf8").trim();
 const nums = raw ? raw.split(/\s+/).map(Number) : [];
 console.log(solve(nums).join(" "));
 `,
-      python: `import sys
+      python: `from __future__ import annotations
+import sys
+from typing import List, Dict, Optional, Tuple, Set
 
 
-def solve(nums: list[int]) -> list[int]:
+def solve(nums: List[int]) -> List[int]:
     # TODO: return the product array excluding self
     return []
 
@@ -471,10 +479,12 @@ const nums = lines[0] ? lines[0].trim().split(/\s+/).map(Number) : [];
 const target = lines[1] ? Number(lines[1]) : 0;
 console.log(String(solve(nums, target)));
 `,
-      python: `import sys
+      python: `from __future__ import annotations
+import sys
+from typing import List, Dict, Optional, Tuple, Set
 
 
-def solve(nums: list[int], target: int) -> int:
+def solve(nums: List[int], target: int) -> int:
     # TODO: return the target index or -1
     return -1
 
@@ -569,10 +579,12 @@ const nums = lines[0] ? lines[0].trim().split(/\s+/).map(Number) : [];
 const k = lines[1] ? Number(lines[1]) : 0;
 console.log(solve(nums, k).join(" "));
 `,
-      python: `import sys
+      python: `from __future__ import annotations
+import sys
+from typing import List, Dict, Optional, Tuple, Set
 
 
-def solve(nums: list[int], k: int) -> list[int]:
+def solve(nums: List[int], k: int) -> List[int]:
     # TODO: return the top-k frequent elements
     return []
 
@@ -677,10 +689,12 @@ const [rows] = lines[0] ? lines[0].trim().split(/\s+/).map(Number) : [0, 0];
 const grid = lines.slice(1, rows + 1).map((line) => line.trim().split(/\s+/).map(Number));
 console.log(String(solve(grid)));
 `,
-      python: `import sys
+      python: `from __future__ import annotations
+import sys
+from typing import List, Dict, Optional, Tuple, Set
 
 
-def solve(grid: list[list[int]]) -> int:
+def solve(grid: List[List[int]]) -> int:
     # TODO: return the minimum minutes or -1
     return -1
 
@@ -752,7 +766,7 @@ int main() {
     templates: {
       typescript: `const fs = require("fs");\n\nfunction solve(nums1: number[], nums2: number[]): number {\n  // TODO: return the median of the two sorted arrays\n  return 0;\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst nums1 = lines[0] ? lines[0].trim().split(/\\s+/).filter(Boolean).map(Number) : [];\nconst nums2 = lines[1] ? lines[1].trim().split(/\\s+/).filter(Boolean).map(Number) : [];\nconsole.log(String(solve(nums1, nums2)));\n`,
       javascript: `const fs = require("fs");\n\nfunction solve(nums1, nums2) {\n  // TODO: return the median of the two sorted arrays\n  return 0;\n}\n\nconst raw = fs.readFileSync(0, "utf8").trim();\nconst lines = raw ? raw.split(/\\r?\\n/) : [];\nconst nums1 = lines[0] ? lines[0].trim().split(/\\s+/).filter(Boolean).map(Number) : [];\nconst nums2 = lines[1] ? lines[1].trim().split(/\\s+/).filter(Boolean).map(Number) : [];\nconsole.log(String(solve(nums1, nums2)));\n`,
-      python: `import sys\n\n\ndef solve(nums1: list[int], nums2: list[int]) -> float:\n    # TODO: return the median of the two sorted arrays\n    return 0\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    nums1 = list(map(int, lines[0].split())) if lines and lines[0].strip() else []\n    nums2 = list(map(int, lines[1].split())) if len(lines) > 1 and lines[1].strip() else []\n    print(solve(nums1, nums2))\n`,
+      python: `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n\ndef solve(nums1: List[int], nums2: List[int]) -> float:\n    # TODO: return the median of the two sorted arrays\n    return 0\n\n\nif __name__ == "__main__":\n    raw = sys.stdin.read().strip()\n    lines = raw.splitlines() if raw else []\n    nums1 = list(map(int, lines[0].split())) if lines and lines[0].strip() else []\n    nums2 = list(map(int, lines[1].split())) if len(lines) > 1 and lines[1].strip() else []\n    print(solve(nums1, nums2))\n`,
       java: `import java.io.BufferedReader;\nimport java.io.InputStreamReader;\nimport java.util.Arrays;\n\npublic class Main {\n  static double solve(int[] nums1, int[] nums2) {\n    // TODO: return the median of the two sorted arrays\n    return 0;\n  }\n\n  public static void main(String[] args) throws Exception {\n    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));\n    String first = reader.readLine();\n    String second = reader.readLine();\n    int[] nums1 = first == null || first.trim().isEmpty()\n      ? new int[0]\n      : Arrays.stream(first.trim().split(\"\\\\s+\")).mapToInt(Integer::parseInt).toArray();\n    int[] nums2 = second == null || second.trim().isEmpty()\n      ? new int[0]\n      : Arrays.stream(second.trim().split(\"\\\\s+\")).mapToInt(Integer::parseInt).toArray();\n    System.out.print(solve(nums1, nums2));\n  }\n}\n`,
       cpp: `#include <iostream>\n#include <sstream>\n#include <string>\n#include <vector>\n\ndouble solve(const std::vector<int>& nums1, const std::vector<int>& nums2) {\n  // TODO: return the median of the two sorted arrays\n  return 0;\n}\n\nint main() {\n  std::ios::sync_with_stdio(false);\n  std::cin.tie(nullptr);\n\n  std::string first;\n  std::string second;\n  std::getline(std::cin, first);\n  std::getline(std::cin, second);\n\n  std::stringstream stream1(first);\n  std::stringstream stream2(second);\n  std::vector<int> nums1;\n  std::vector<int> nums2;\n  int value;\n  while (stream1 >> value) nums1.push_back(value);\n  while (stream2 >> value) nums2.push_back(value);\n  std::cout << solve(nums1, nums2);\n  return 0;\n}\n`,
     },

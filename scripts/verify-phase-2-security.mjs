@@ -193,6 +193,34 @@ assert(rateLimitCode.includes("TIER_QUOTAS"), "Tier quotas defined for guest, fr
 assert(rateLimitCode.includes("hashClientIp"), "Anonymous requests rate-limited by SHA-256 hashed IP");
 
 // -----------------------------------------------------------------------------
+// 6. Server-Side Hidden Test Suites & Anti-Spoofing
+// -----------------------------------------------------------------------------
+console.log("\n6. AUDITING SERVER-SIDE TEST SUITES & ANTI-SPOOFING:");
+const submitRoutePath = path.join(rootDir, "apps", "web", "src", "app", "api", "platform", "submit", "route.ts");
+const submitRouteCode = fs.readFileSync(submitRoutePath, "utf-8");
+assert(submitRouteCode.includes("getProblemTestSuite"), "Submit route evaluates against canonical problem test suites");
+assert(submitRouteCode.includes("hiddenCase"), "Submit route checks hidden test cases to prevent client spoofing");
+
+const testSuitesPath = path.join(rootDir, "apps", "web", "src", "lib", "server", "problem-test-suites.ts");
+assert(fs.existsSync(testSuitesPath), "Canonical problem test suites file exists");
+const testSuitesCode = fs.readFileSync(testSuitesPath, "utf-8");
+assert(testSuitesCode.includes("two-sum"), "Test suites contain canonical two-sum tests");
+assert(testSuitesCode.includes("isHidden: true"), "Test suites contain hidden test cases");
+
+// -----------------------------------------------------------------------------
+// 7. Privacy: Email Masking on Leaderboards & Python Template Compatibility
+// -----------------------------------------------------------------------------
+console.log("\n7. AUDITING LEADERBOARD EMAIL MASKING & PYTHON COMPATIBILITY:");
+const platformDataPath = path.join(rootDir, "apps", "web", "src", "lib", "server", "platform-data.ts");
+const platformDataCode = fs.readFileSync(platformDataPath, "utf-8");
+assert(platformDataCode.includes("maskIfEmail"), "Leaderboard data masks email addresses from public view");
+
+const runtimeSpecPath = path.join(rootDir, "apps", "web", "src", "lib", "problem-runtime.ts");
+const runtimeSpecCode = fs.readFileSync(runtimeSpecPath, "utf-8");
+assert(!runtimeSpecCode.includes("list[int]"), "Python templates avoid un-annotated lowercase generic list[int]");
+assert(runtimeSpecCode.includes("from __future__ import annotations"), "Python templates use future annotations for runtime compatibility");
+
+// -----------------------------------------------------------------------------
 // Summary
 // -----------------------------------------------------------------------------
 console.log("\n==================================================================");
