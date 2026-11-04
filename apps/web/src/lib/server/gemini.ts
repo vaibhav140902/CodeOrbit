@@ -104,6 +104,14 @@ const callGemini = async ({
               generationConfig: {
                 temperature: 0.4,
                 responseMimeType,
+                maxOutputTokens: 2048,
+                ...(currentModel.includes("2.5")
+                  ? {
+                      thinkingConfig: {
+                        thinkingBudget: 0,
+                      },
+                    }
+                  : {}),
               },
             }),
           },

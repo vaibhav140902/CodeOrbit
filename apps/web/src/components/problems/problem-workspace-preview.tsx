@@ -11,6 +11,7 @@ import { getProblemRuntimeSpec, getProblemTemplate } from "@/lib/problem-runtime
 import { usePlatformAuth } from "@/lib/auth-context";
 import { platformApi } from "@/lib/platform-api";
 import { toast } from "@/components/ui/toast-bus";
+import { canExecuteClientSide, executeInClientSandbox } from "@/lib/client-sandbox";
 
 const defaultBillingSummary: BillingSummary = {
   planId: "free",
@@ -360,6 +361,49 @@ export function ProblemWorkspacePreview({
     if (running) return;
     setRunning(true);
     setConsoleStatus("Running");
+
+    if (canExecuteClientSide(selectedLanguage)) {
+      setRuntimeLabel("Instant Client Sandbox (0ms)");
+      setRawConsoleOutput("Running code in client sandbox...");
+      try {
+        const clientRes = await executeInClientSandbox(
+          selectedLanguage,
+          code,
+          customInput,
+          expectedOutput || undefined
+        );
+        if (clientRes.status !== "Runtime Error" || !clientRes.stderr?.includes("unavailable")) {
+          setConsoleStatus(clientRes.status);
+          setRuntimeLabel(`Instant Sandbox • ${selectedLanguageLabel} (${clientRes.timeSeconds}s)`);
+          setExecutionResult({
+            status: clientRes.status,
+            judgeStatus: clientRes.judgeStatus,
+            stdout: clientRes.stdout,
+            stderr: clientRes.stderr,
+            compileOutput: null,
+            expectedOutput: expectedOutput || null,
+            timeSeconds: clientRes.timeSeconds,
+            memoryKb: clientRes.memoryKb,
+            passed: clientRes.passed,
+          });
+          setRawConsoleOutput(clientRes.stdout || clientRes.stderr || clientRes.message);
+          setNotice("Sample test evaluated instantly in client sandbox (0ms server latency).");
+          if (clientRes.passed) {
+            toast.success(
+              `Verdict: ${clientRes.status} • ${Math.round(parseFloat(clientRes.timeSeconds) * 1000)}ms`,
+              "Test Passed"
+            );
+          } else {
+            toast.error(`Verdict: ${clientRes.status}`, "Test Output Check");
+          }
+          setRunning(false);
+          return;
+        }
+      } catch (clientErr) {
+        console.warn("Client sandbox fallback to Judge0:", clientErr);
+      }
+    }
+
     setRuntimeLabel("Judge0 isolated runner");
     setRawConsoleOutput("Executing your code against testcase in sandbox...");
     toast.info("Executing code in Judge0 sandbox...", "Running Sandbox");

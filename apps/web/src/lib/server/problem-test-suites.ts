@@ -43,7 +43,7 @@ export const CANONICAL_TEST_SUITES: Record<string, ProblemTestCase[]> = {
       id: "reverse-string-hidden-1",
       name: "Hidden Test 1",
       stdin: "CodeOrbit",
-      expectedOutput: "tibroEdoC",
+      expectedOutput: "tibrOedoC",
       isHidden: true,
     },
     {
