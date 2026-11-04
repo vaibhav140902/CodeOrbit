@@ -15,12 +15,18 @@ export function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [dpdpConsent, setDpdpConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!dpdpConsent) {
+      setErrorMessage("Consent required: Please accept the Terms of Service and DPDP Act 2023 Privacy Policy.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setErrorMessage("Passwords do not match.");
@@ -42,6 +48,11 @@ export function SignupForm() {
   };
 
   const handleGoogleSignup = async () => {
+    if (!dpdpConsent) {
+      setErrorMessage("Consent required: Please accept the Terms of Service and DPDP Act 2023 Privacy Policy below.");
+      return;
+    }
+
     setGoogleLoading(true);
     setErrorMessage(null);
 
@@ -123,6 +134,27 @@ export function SignupForm() {
                 minLength={6}
                 disabled={!authEnabled}
               />
+            </div>
+
+            <div className="flex items-start gap-2.5 pt-1">
+              <input
+                id="dpdpConsent"
+                type="checkbox"
+                checked={dpdpConsent}
+                onChange={(e) => setDpdpConsent(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-[color:var(--border)] text-cyan-500 focus:ring-cyan-400"
+                required
+              />
+              <label htmlFor="dpdpConsent" className="text-xs text-soft leading-relaxed select-none">
+                I agree to the{" "}
+                <Link href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">
+                  Terms of Service
+                </Link>{" "}
+                and consent to the processing of my educational and interview data under India's{" "}
+                <Link href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">
+                  DPDP Act 2023 & Privacy Policy
+                </Link>.
+              </label>
             </div>
 
             {errorMessage && <p className="text-sm text-rose-500">{errorMessage}</p>}

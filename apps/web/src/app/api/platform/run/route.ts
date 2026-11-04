@@ -6,14 +6,14 @@ import {
   rateLimitResponse,
 } from "@/lib/server/rate-limit";
 import { executeWithJudge0 } from "@/lib/server/judge0";
-import { getViewerContextFromHeaders } from "@/lib/server/platform-data";
+import { requireAuth, AuthenticationError } from "@/lib/server/auth-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const viewer = await getViewerContextFromHeaders(request.headers);
+    const viewer = await requireAuth(request.headers);
     await assertTierRateLimit(request, "code_execution", viewer);
 
     const input = runCodeInputSchema.parse(await request.json());
@@ -38,6 +38,12 @@ export async function POST(request: NextRequest) {
       language: result.language,
     });
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(
+        { message: "Sign in required to run code in the Monaco IDE." },
+        { status: 401 }
+      );
+    }
     if (error instanceof RateLimitError) {
       return rateLimitResponse(error);
     }

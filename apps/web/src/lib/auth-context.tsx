@@ -34,34 +34,22 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 type HydratableUser = Pick<User, "uid" | "email" | "displayName" | "getIdTokenResult">;
 
-const ADMIN_EMAILS = new Set(
-  (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "vaibhavmaurya.1409@gmail.com,test12@gmail.com,vaibhav.test@codeorbit.in,vm3978257@gmail.com")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-);
-
-const isConfiguredAdmin = (email: string | null | undefined): boolean => {
-  if (!email) return false;
-  return ADMIN_EMAILS.has(email.toLowerCase());
-};
-
 const fallbackDisplayName = (email: string | null | undefined) =>
   (email ?? "User").split("@")[0].replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "User";
 
 const buildFallbackProfile = (currentUser: HydratableUser, tokenResult?: IdTokenResult | null): UserProfile => {
-  const isAdmin = tokenResult?.claims.admin === true || isConfiguredAdmin(currentUser.email);
+  const isAdmin = tokenResult?.claims?.admin === true || tokenResult?.claims?.role === "admin";
   return {
     uid: currentUser.uid,
     email: currentUser.email ?? "",
     displayName: currentUser.displayName ?? fallbackDisplayName(currentUser.email),
-    isAdmin,
+    isAdmin: Boolean(isAdmin),
     locale: "en",
     role:
-      tokenResult?.claims.workspaceRole === "admin" ||
-      tokenResult?.claims.workspaceRole === "recruiter_beta" ||
-      tokenResult?.claims.workspaceRole === "campus_beta"
-        ? tokenResult.claims.workspaceRole
+      tokenResult?.claims?.workspaceRole === "admin" ||
+      tokenResult?.claims?.workspaceRole === "recruiter_beta" ||
+      tokenResult?.claims?.workspaceRole === "campus_beta"
+        ? (tokenResult.claims.workspaceRole as UserProfile["role"])
         : isAdmin
           ? "admin"
           : "user",

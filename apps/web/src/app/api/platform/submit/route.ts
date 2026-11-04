@@ -8,7 +8,8 @@ import {
   rateLimitResponse,
 } from "@/lib/server/rate-limit";
 import { executeWithJudge0 } from "@/lib/server/judge0";
-import { getViewerContextFromHeaders, recordSubmissionData } from "@/lib/server/platform-data";
+import { recordSubmissionData } from "@/lib/server/platform-data";
+import { requireAuth, AuthenticationError } from "@/lib/server/auth-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ const submitSchema = runCodeInputSchema.extend({
 
 export async function POST(request: NextRequest) {
   try {
-    const viewer = await getViewerContextFromHeaders(request.headers);
+    const viewer = await requireAuth(request.headers);
     await assertTierRateLimit(request, "code_execution", viewer);
 
     const input = submitSchema.parse(await request.json());
@@ -59,6 +60,12 @@ export async function POST(request: NextRequest) {
       language: result.language,
     });
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(
+        { message: "Sign in required to submit solutions to your candidate proof record." },
+        { status: 401 }
+      );
+    }
     if (error instanceof RateLimitError) {
       return rateLimitResponse(error);
     }

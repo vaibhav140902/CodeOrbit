@@ -415,6 +415,15 @@ export function ResumeRoasterView() {
             </div>
           )}
 
+          {/* DPDP Act 2023 In-Memory Privacy Guarantee Notice */}
+          <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 text-xs text-emerald-300">
+            <span className="text-base select-none">🛡️</span>
+            <div>
+              <span className="font-semibold text-emerald-200">DPDP Act 2023 In-Memory Privacy Guarantee:</span>{" "}
+              Uploaded documents are parsed in volatile server memory strictly to compute your ATS placement score. When evaluated anonymously, resume contents are automatically purged and never saved to persistent storage or sold.
+            </div>
+          </div>
+
           {errorMessage && (
             <div className="rounded-xl border border-rose-500/40 bg-rose-950/30 p-3.5 text-xs text-rose-300">
               ⚠️ {errorMessage}

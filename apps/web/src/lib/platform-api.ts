@@ -388,4 +388,11 @@ export const platformApi = {
     const response = await callFunction<typeof payload, unknown>("setWorkspaceRole", payload);
     return bootstrapProfileResponseSchema.parse(response).profile;
   },
+  async deleteAccountAndData(): Promise<{ success: boolean; message: string }> {
+    return postJson(
+      "/api/platform/delete-account",
+      {},
+      z.object({ success: z.boolean(), message: z.string() })
+    );
+  },
 };

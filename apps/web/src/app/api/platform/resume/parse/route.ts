@@ -5,6 +5,10 @@ import {
   rateLimitResponse,
 } from "@/lib/server/rate-limit";
 import { extractViewerFromHeaders } from "@/lib/server/auth-guard";
+import {
+  validateResumeUpload,
+  UploadSecurityError,
+} from "@/lib/server/upload-security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,41 +29,30 @@ export async function POST(request: NextRequest) {
     }
 
     const uploadedFile = file as File;
-    const fileName = uploadedFile.name || "resume.pdf";
-    const extension = fileName.split(".").pop()?.toLowerCase();
+    const rawFileName = uploadedFile.name || "resume.pdf";
 
-    // Check file size (5MB maximum)
     const arrayBuffer = await uploadedFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    if (buffer.length > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { message: "File exceeds 5MB size limit. Please upload a smaller resume file." },
-        { status: 400 }
-      );
-    }
+    // Cryptographic & magic bytes inspection (size <= 5MB, non-executable, validated magic bytes)
+    const validatedUpload = validateResumeUpload(buffer, rawFileName);
 
     let extractedText = "";
 
-    if (extension === "pdf") {
+    if (validatedUpload.type === "pdf") {
       // Dynamic import to prevent bundler bundling issues
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdfParseModule = await import("pdf-parse" as any);
       const pdfParse = pdfParseModule.default || pdfParseModule;
       const pdfData = await pdfParse(buffer);
       extractedText = pdfData.text || "";
-    } else if (extension === "docx") {
+    } else if (validatedUpload.type === "docx") {
       const mammothModule = await import("mammoth");
       const mammoth = mammothModule.default || mammothModule;
       const result = await mammoth.extractRawText({ buffer });
       extractedText = result.value || "";
-    } else if (extension === "txt" || extension === "md") {
+    } else if (validatedUpload.type === "text") {
       extractedText = buffer.toString("utf-8");
-    } else {
-      return NextResponse.json(
-        { message: `Unsupported file type (.${extension}). Please upload a PDF, DOCX, or TXT resume.` },
-        { status: 400 }
-      );
     }
 
     const cleanedText = extractedText.replace(/\r\n/g, "\n").trim();
@@ -75,13 +68,19 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      fileName,
+      fileName: validatedUpload.sanitizedFileName,
       wordCount,
       text: cleanedText,
     });
   } catch (error) {
     if (error instanceof RateLimitError) {
       return rateLimitResponse(error);
+    }
+    if (error instanceof UploadSecurityError) {
+      return NextResponse.json(
+        { message: error.message, code: error.code },
+        { status: error.status }
+      );
     }
     console.error("Resume file parsing error:", error);
     return NextResponse.json(

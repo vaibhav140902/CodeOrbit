@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTpoBatchAnalyticsData } from "@/lib/server/b2b-platform";
+import { requireAuth, AuthenticationError } from "@/lib/server/auth-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,7 @@ export interface NirfComplianceReport {
 
 export async function GET(request: NextRequest) {
   try {
+    await requireAuth(request.headers);
     const { searchParams } = new URL(request.url);
     const cohortId = searchParams.get("cohortId") || "nit-trichy-cse-2026";
     const format = searchParams.get("format") || "csv";
@@ -133,6 +135,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json({ message: "Authentication required." }, { status: 401 });
+    }
     console.error("NIRF export generation failed:", error);
     return NextResponse.json({ message: "Failed to generate NIRF report" }, { status: 500 });
   }

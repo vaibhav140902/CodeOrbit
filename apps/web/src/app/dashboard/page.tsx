@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { DashboardSpotlight } from "@/components/dashboard/dashboard-spotlight";
+import { AccountPrivacySettings } from "@/components/dashboard/account-privacy-settings";
 import { AppFrame } from "@/components/layout/app-frame";
 import { jobWorkflowPreview, publicProofProfiles } from "@/data/hiring-os";
 
@@ -129,6 +130,9 @@ export default function DashboardPage() {
                 ))}
               </div>
             </section>
+
+            {/* DPDP Act 2023 Account Privacy & Data Erasure */}
+            <AccountPrivacySettings />
           </div>
         </div>
       </AuthGuard>

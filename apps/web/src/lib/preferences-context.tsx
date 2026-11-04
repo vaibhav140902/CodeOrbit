@@ -24,10 +24,10 @@ const dictionary: Dictionary = {
   signup: { en: "Sign up", hi: "साइन अप" },
   logout: { en: "Logout", hi: "लॉगआउट" },
   install: { en: "Install app", hi: "ऐप इंस्टॉल करें" },
-  consent_title: { en: "Privacy & consent", hi: "प्राइवेसी और सहमति" },
+  consent_title: { en: "Privacy & DPDP Notice", hi: "प्राइवेसी और DPDP सहमति" },
   consent_body: {
-    en: "We use essential auth/storage data plus analytics and AI processing only after consent. This supports GDPR and India IT Act aligned disclosure.",
-    hi: "हम आवश्यक auth/storage डेटा के साथ analytics और AI processing का उपयोग सहमति के बाद करते हैं। यह GDPR और India IT Act aligned disclosure के लिए है।",
+    en: "CodeOrbit processes authentication, coding submissions, and AI resume/interview telemetry in compliance with India's Digital Personal Data Protection (DPDP) Act 2023. Resumes uploaded anonymously are processed in volatile memory and never retained without an account.",
+    hi: "CodeOrbit भारत के डिजिटल पर्सनल डेटा प्रोटेक्शन (DPDP) अधिनियम 2023 के तहत ऑथेंटिकेशन, कोडिंग सबमिशन और AI टेलीमेट्री प्रोसेस करता है। बिना अकाउंट के अपलोड किए गए रेज़्यूमे केवल मेमोरी में प्रोसेस होते हैं और कभी स्टोर नहीं किए जाते।",
   },
   consent_accept: { en: "Accept", hi: "स्वीकार करें" },
 };
