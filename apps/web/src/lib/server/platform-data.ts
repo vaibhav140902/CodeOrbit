@@ -745,7 +745,7 @@ export const getBillingSummaryData = async (viewer: ViewerContext): Promise<Bill
     const planId = latestSub.plan_code === "premium-lifetime" ? "premium-lifetime" : "premium-monthly";
     return {
       planId,
-      planName: planId === "premium-lifetime" ? "Interview Sprint" : "Pro",
+      planName: planId === "premium-lifetime" ? "4-Month Season Pass" : "30-Day Sprint Pass",
       status: latestSub.status,
       premiumActive: true,
       validUntilIso: latestSub.current_period_end ?? null,
@@ -799,7 +799,7 @@ export const getBillingSummaryData = async (viewer: ViewerContext): Promise<Bill
     const planId = row.plan_code === "premium-lifetime" ? "premium-lifetime" : "premium-monthly";
     return {
       planId,
-      planName: planId === "premium-lifetime" ? "Interview Sprint" : "Pro",
+      planName: planId === "premium-lifetime" ? "4-Month Season Pass" : "30-Day Sprint Pass",
       status: row.status,
       premiumActive: true,
       validUntilIso: row.current_period_end ?? null,
@@ -1802,14 +1802,14 @@ const BILLING_PLANS_MAP: Record<
   { name: string; amountPaise: number; validityDays: number }
 > = {
   "premium-monthly": {
-    name: "Pro",
-    amountPaise: 149900,
+    name: "30-Day Sprint Pass",
+    amountPaise: 49900,
     validityDays: 30,
   },
   "premium-lifetime": {
-    name: "Interview Sprint",
-    amountPaise: 499900,
-    validityDays: 365,
+    name: "4-Month Season Pass",
+    amountPaise: 149900,
+    validityDays: 120,
   },
 };
 

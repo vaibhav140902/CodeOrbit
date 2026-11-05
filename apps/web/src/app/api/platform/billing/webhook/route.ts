@@ -11,8 +11,30 @@ export const dynamic = "force-dynamic";
 
 const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET ?? "").trim();
 
+// In-memory replay & duplicate event cache (x-razorpay-event-id idempotency)
+const PROCESSED_EVENT_IDS = new Set<string>();
+const MAX_EVENT_CACHE = 5000;
+
+function recordProcessedEventId(eventId: string): boolean {
+  if (PROCESSED_EVENT_IDS.has(eventId)) {
+    return false;
+  }
+  if (PROCESSED_EVENT_IDS.size >= MAX_EVENT_CACHE) {
+    const oldest = PROCESSED_EVENT_IDS.values().next().value;
+    if (oldest) PROCESSED_EVENT_IDS.delete(oldest);
+  }
+  PROCESSED_EVENT_IDS.add(eventId);
+  return true;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const eventIdHeader = request.headers.get("x-razorpay-event-id");
+    if (eventIdHeader && !recordProcessedEventId(eventIdHeader)) {
+      console.log(`Razorpay webhook duplicate event ignored (idempotent): [${eventIdHeader}]`);
+      return NextResponse.json({ received: true, duplicate: true, eventId: eventIdHeader });
+    }
+
     if (!RAZORPAY_WEBHOOK_SECRET) {
       console.error("Razorpay webhook rejected because RAZORPAY_WEBHOOK_SECRET is not configured.");
       return NextResponse.json({ message: "Razorpay webhook is not configured." }, { status: 503 });

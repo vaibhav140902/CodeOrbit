@@ -6,14 +6,14 @@ import path from "node:path";
 const WEBHOOK_SECRET = "codeorbit2026vaibhavsecurewebhook12345";
 const BILLING_PLANS_MAP = {
   "premium-monthly": {
-    name: "Pro",
-    amountPaise: 149900,
+    name: "30-Day Sprint Pass",
+    amountPaise: 49900,
     validityDays: 30,
   },
   "premium-lifetime": {
-    name: "Interview Sprint",
-    amountPaise: 499900,
-    validityDays: 365,
+    name: "4-Month Season Pass",
+    amountPaise: 149900,
+    validityDays: 120,
   },
 };
 
