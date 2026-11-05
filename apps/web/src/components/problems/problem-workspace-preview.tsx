@@ -205,6 +205,38 @@ export function ProblemWorkspacePreview({
     };
   }, [initialProblem, problemId]);
 
+  // Proctoring telemetry: tracks tab blurs and external paste operations
+  const [proctorTelemetry, setProctorTelemetry] = useState({
+    tabSwitches: 0,
+    pasteEvents: 0,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setProctorTelemetry((prev) => {
+          const next = { ...prev, tabSwitches: prev.tabSwitches + 1 };
+          toast.warning(`Assessment Proctor: Tab switch recorded (${next.tabSwitches})`, "Integrity Guard");
+          return next;
+        });
+      }
+    };
+
+    const handlePaste = () => {
+      setProctorTelemetry((prev) => ({ ...prev, pasteEvents: prev.pasteEvents + 1 }));
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("paste", handlePaste);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, []);
+
   // Load draft when problem or language changes
   useEffect(() => {
     const storedDraft = readLocalProblemDraft(problem.id, selectedLanguage);
@@ -682,6 +714,13 @@ export function ProblemWorkspacePreview({
               >
                 {focusMode ? "Exit Focus Mode" : "Focus Mode"}
               </Button>
+              <div className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Proctor Active</span>
+                {proctorTelemetry.tabSwitches > 0 && (
+                  <span className="text-amber-300 ml-0.5">({proctorTelemetry.tabSwitches} blurs)</span>
+                )}
+              </div>
               <div className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-xs text-slate-300">
                 {autosaveState === "saving" ? "Saving draft..." : "Draft autosaved"}
               </div>
