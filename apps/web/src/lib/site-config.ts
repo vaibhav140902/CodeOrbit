@@ -7,7 +7,7 @@ export const siteConfig = {
   description:
     "Turn practice into proof, proof into applications, and applications into offers with an India-first verified developer hiring OS.",
   url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://codeorbit.app").replace(/\/+$/, ""),
-  ogImage: "/brand-mark.svg",
+  ogImage: "/api/og",
   keywords: [
     "India developer hiring",
     "coding interview preparation India",
