@@ -8,6 +8,12 @@ console.log("            Zero-Dollar Architecture, Security Hardening & B2B Wedg
 console.log("================================================================================\n");
 
 const suites = [
+  { file: "verify-truth-table.mjs", title: "Phase 1: Truth Table & Marketing Integrity (0 Fabricated Claims)" },
+  { file: "verify-phase-2-security.mjs", title: "Phase 2: Security Penetration & India DPDP Act 2023 Compliance" },
+  { file: "verify-phase-3-reliability.mjs", title: "Phase 3: 14 Problem Suites, 0ms Client Sandbox & AI Guardrails" },
+  { file: "verify-phase-4-billing.mjs", title: "Phase 4: UPI Razorpay Passes (₹499/₹1499) & Replay Idempotency" },
+  { file: "verify-phase-5-seo.mjs", title: "Phase 5: 1200x630 PNG OpenGraph Social Cards & Crawler Bots" },
+  { file: "verify-phase-6-campus.mjs", title: "Phase 6: B2B2C Campus TPO Command Center & Proctoring Telemetry" },
   { file: "test-tenancy-dpdp.mjs", title: "Milestone 1: Multi-Tenancy, Contests & DPDP Compliance" },
   { file: "test-auth-hardening.mjs", title: "Milestone 2: Auth Hardening & SPA Decommissioning" },
   { file: "test-billing-convergence.mjs", title: "Milestone 3: Payment & Subscription State Convergence" },
@@ -17,7 +23,7 @@ const suites = [
   { file: "test-resume-roaster.mjs", title: "Milestone 7: ATS Resume Builder & Viral Resume Roaster" },
   { file: "test-mock-interview.mjs", title: "Milestone 8: AI Voice/Chat Mock Interviewer & Scorecard" },
   { file: "test-b2b-portal.mjs", title: "Milestone 9: B2B TPO Batch Analytics & Cryptographic Proof Badges" },
-  { file: "test-phase2-growth.mjs", title: "Phase 2: Viral Growth, Health & NIRF Compliance" },
+  { file: "test-phase2-growth.mjs", title: "Growth & Telemetry: Viral Loops, Health & NIRF Export" },
 ];
 
 let totalPassed = 0;
