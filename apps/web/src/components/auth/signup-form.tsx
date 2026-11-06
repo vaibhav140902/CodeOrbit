@@ -2,14 +2,21 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { usePlatformAuth } from "@/lib/auth-context";
 import { getFirebaseAuthMessage } from "@/lib/firebase/auth-errors";
 import { BRAND } from "@codeorbit/ui";
 
-export function SignupForm() {
+function SignupFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
+  const redirectTarget =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/dashboard";
+
   const { authEnabled, signInWithGoogle, signUpWithEmail } = usePlatformAuth();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,9 +43,17 @@ export function SignupForm() {
     setLoading(true);
     setErrorMessage(null);
 
+    if (!authEnabled) {
+      setErrorMessage(
+        "Cloud authentication is connecting. If you are the administrator, configure the NEXT_PUBLIC_FIREBASE_* environment variables in Vercel to activate live account creation."
+      );
+      setLoading(false);
+      return;
+    }
+
     try {
       await signUpWithEmail(email, password, displayName.trim() || email.split("@")[0] || "User");
-      router.push("/dashboard");
+      router.push(redirectTarget);
       router.refresh();
     } catch (error) {
       setErrorMessage(getFirebaseAuthMessage(error));
@@ -56,9 +71,17 @@ export function SignupForm() {
     setGoogleLoading(true);
     setErrorMessage(null);
 
+    if (!authEnabled) {
+      setErrorMessage(
+        "Google sign in is awaiting Firebase client credentials in Vercel environment variables."
+      );
+      setGoogleLoading(false);
+      return;
+    }
+
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      router.push(redirectTarget);
       router.refresh();
     } catch (error) {
       setErrorMessage(getFirebaseAuthMessage(error));
@@ -79,7 +102,19 @@ export function SignupForm() {
 
         <div className="surface-card p-5 sm:p-8">
           <h1 className="text-2xl font-bold sm:text-3xl">Create account</h1>
-          <p className="text-muted mt-2 mb-8">Start your private readiness workspace and build recruiter-safe proof.</p>
+          <p className="text-muted mt-2 mb-6">Start your private readiness workspace and build recruiter-safe proof.</p>
+
+          {!authEnabled && (
+            <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+              <div className="flex items-center gap-2 font-semibold text-amber-300">
+                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                Cloud Authentication Connecting
+              </div>
+              <p className="mt-1 text-slate-300 leading-relaxed">
+                Inputs are fully interactive. To enable live cloud sign-up, add your Firebase keys in Vercel Project Settings.
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
@@ -89,9 +124,10 @@ export function SignupForm() {
                 placeholder="Your name"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                className="field-input"
+                className="field-input w-full"
                 required
-                disabled={!authEnabled}
+                disabled={loading}
+                autoComplete="name"
               />
             </div>
 
@@ -102,9 +138,10 @@ export function SignupForm() {
                 placeholder="your.email@example.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="field-input"
+                className="field-input w-full"
                 required
-                disabled={!authEnabled}
+                disabled={loading}
+                autoComplete="email"
               />
             </div>
 
@@ -115,10 +152,11 @@ export function SignupForm() {
                 placeholder="At least 6 characters"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="field-input"
+                className="field-input w-full"
                 required
                 minLength={6}
-                disabled={!authEnabled}
+                disabled={loading}
+                autoComplete="new-password"
               />
             </div>
 
@@ -129,10 +167,11 @@ export function SignupForm() {
                 placeholder="Repeat password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                className="field-input"
+                className="field-input w-full"
                 required
                 minLength={6}
-                disabled={!authEnabled}
+                disabled={loading}
+                autoComplete="new-password"
               />
             </div>
 
@@ -142,10 +181,11 @@ export function SignupForm() {
                 type="checkbox"
                 checked={dpdpConsent}
                 onChange={(e) => setDpdpConsent(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-[color:var(--border)] text-cyan-500 focus:ring-cyan-400"
+                className="mt-1 h-4 w-4 rounded border-[color:var(--border)] text-cyan-500 focus:ring-cyan-400 cursor-pointer"
                 required
+                disabled={loading}
               />
-              <label htmlFor="dpdpConsent" className="text-xs text-soft leading-relaxed select-none">
+              <label htmlFor="dpdpConsent" className="text-xs text-soft leading-relaxed select-none cursor-pointer">
                 I agree to the{" "}
                 <Link href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">
                   Terms of Service
@@ -157,11 +197,15 @@ export function SignupForm() {
               </label>
             </div>
 
-            {errorMessage && <p className="text-sm text-rose-500">{errorMessage}</p>}
+            {errorMessage && (
+              <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                {errorMessage}
+              </div>
+            )}
 
             <button
               type="submit"
-              disabled={loading || !authEnabled}
+              disabled={loading}
               className="btn-primary w-full py-3 disabled:cursor-not-allowed disabled:opacity-65"
             >
               {loading ? "Creating account..." : "Create account"}
@@ -177,7 +221,7 @@ export function SignupForm() {
           <button
             type="button"
             onClick={() => void handleGoogleSignup()}
-            disabled={googleLoading || !authEnabled}
+            disabled={googleLoading}
             className="btn-secondary flex w-full items-center justify-center gap-3 py-3 disabled:cursor-not-allowed disabled:opacity-65"
           >
             <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-bold text-slate-800">
@@ -188,12 +232,32 @@ export function SignupForm() {
 
           <div className="mt-6 text-center text-sm text-muted">
             Already have an account?{" "}
-            <Link href="/login" className="font-semibold text-[color:var(--accent)] hover:underline">
+            <Link
+              href={redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : "/login"}
+              className="font-semibold text-[color:var(--accent)] hover:underline"
+            >
               Sign in
             </Link>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export function SignupForm() {
+  return (
+    <Suspense
+      fallback={
+        <div className="app-shell flex items-center justify-center px-3 py-6 sm:px-6 sm:py-10">
+          <div className="surface-card w-full max-w-md p-8 text-center animate-pulse">
+            <div className="h-8 w-32 bg-[color:var(--surface-muted)] rounded mx-auto mb-4" />
+            <div className="h-4 w-48 bg-[color:var(--surface-muted)] rounded mx-auto" />
+          </div>
+        </div>
+      }
+    >
+      <SignupFormContent />
+    </Suspense>
   );
 }

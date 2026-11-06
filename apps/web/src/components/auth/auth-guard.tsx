@@ -28,12 +28,23 @@ export function AuthGuard({
   if (!authEnabled) {
     return (
       <div className="app-shell flex items-center justify-center px-4 py-10">
-        <div className="surface-card w-full max-w-xl p-6 text-center sm:p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">Setup Needed</p>
-          <h1 className="mt-3 text-2xl font-bold sm:text-3xl">Firebase env is not configured.</h1>
-          <p className="text-muted mt-3 text-sm sm:text-base">
-            Add the values from <code>apps/web/.env.example</code> to run the secure auth flow.
+        <div className="surface-card w-full max-w-xl p-6 text-center sm:p-8 border border-amber-500/30">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-400 text-lg">
+            ⚡
+          </div>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-amber-400">Setup Required</p>
+          <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Firebase Auth Pending</h1>
+          <p className="text-muted mt-3 text-sm sm:text-base leading-relaxed">
+            This protected workspace requires Firebase client credentials. Add the 6 <code>NEXT_PUBLIC_FIREBASE_*</code> environment variables in Vercel Project Settings to activate live authentication.
           </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Link href="/" className="btn-secondary text-center">
+              Return Home
+            </Link>
+            <Link href="/login" className="btn-primary text-center">
+              Go to Sign In
+            </Link>
+          </div>
         </div>
       </div>
     );
