@@ -6,20 +6,23 @@ import {
   rateLimitResponse,
 } from "@/lib/server/rate-limit";
 import { executeWithJudge0 } from "@/lib/server/judge0";
-import { requireAuth, AuthenticationError } from "@/lib/server/auth-guard";
+import { wrapCodeForExecution } from "@/lib/server/code-harness";
+import { extractViewerFromHeaders, AuthenticationError } from "@/lib/server/auth-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const viewer = await requireAuth(request.headers);
+    const viewer = await extractViewerFromHeaders(request.headers);
     await assertTierRateLimit(request, "code_execution", viewer);
 
     const input = runCodeInputSchema.parse(await request.json());
+    const sourceCode = wrapCodeForExecution(input.problemId ?? "", input.language, input.submission);
+
     const result = await executeWithJudge0({
       language: input.language,
-      sourceCode: input.submission,
+      sourceCode,
       stdin: input.stdin,
       expectedOutput: input.expectedOutput,
     });

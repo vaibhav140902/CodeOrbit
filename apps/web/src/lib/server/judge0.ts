@@ -9,7 +9,18 @@ const JUDGE0_ENABLE_NETWORK = process.env.JUDGE0_ENABLE_NETWORK === "true";
 const JUDGE0_MAX_POLLS = Number(process.env.JUDGE0_MAX_POLLS ?? "12");
 const JUDGE0_POLL_INTERVAL_MS = Number(process.env.JUDGE0_POLL_INTERVAL_MS ?? "1000");
 
+// Modern LTS and latest stable Judge0 CE runtimes
 const JUDGE0_LANGUAGE_IDS: Record<string, number> = {
+  javascript: 102, // Node.js 22.08.0 (Modern ES2024+)
+  typescript: 101, // TypeScript 5.6.2
+  python: 100,     // Python 3.12.5 (Supports PEP 585 generics, match/case, f-string enhancements)
+  java: 91,        // Java JDK 17.0.6 LTS
+  cpp: 105,        // C++ GCC 14.1.0
+  c: 104,          // C GCC 14.1.0
+};
+
+// Fallback legacy language IDs if running on older self-hosted Judge0 CE instances
+const JUDGE0_FALLBACK_LANGUAGE_IDS: Record<string, number> = {
   javascript: 63,
   typescript: 74,
   python: 71,
@@ -148,7 +159,7 @@ const buildMessage = (input: {
 };
 
 export const executeWithJudge0 = async (input: Judge0ExecutionInput): Promise<Judge0ExecutionResult> => {
-  const languageId = JUDGE0_LANGUAGE_IDS[input.language];
+  let languageId = JUDGE0_LANGUAGE_IDS[input.language] ?? JUDGE0_FALLBACK_LANGUAGE_IDS[input.language];
   const expectedOutput =
     typeof input.expectedOutput === "string" && input.expectedOutput.trim() ? input.expectedOutput : undefined;
 
@@ -156,20 +167,45 @@ export const executeWithJudge0 = async (input: Judge0ExecutionInput): Promise<Ju
     throw new Error(`Language "${input.language}" is not supported by the Judge0 runner.`);
   }
 
-  const createResponse = await judge0Fetch<Judge0SubmissionTokenResponse>("/submissions?base64_encoded=false&wait=false", {
-    method: "POST",
-    body: JSON.stringify({
-      source_code: input.sourceCode,
-      language_id: languageId,
-      stdin: input.stdin ?? "",
-      expected_output: expectedOutput,
-      cpu_time_limit: JUDGE0_CPU_TIME_LIMIT_SECONDS,
-      wall_time_limit: JUDGE0_WALL_TIME_LIMIT_SECONDS,
-      memory_limit: JUDGE0_MEMORY_LIMIT_KB,
-      enable_network: JUDGE0_ENABLE_NETWORK,
-      number_of_runs: 1,
-    }),
-  });
+  let createResponse: Judge0SubmissionTokenResponse;
+  try {
+    createResponse = await judge0Fetch<Judge0SubmissionTokenResponse>("/submissions?base64_encoded=false&wait=false", {
+      method: "POST",
+      body: JSON.stringify({
+        source_code: input.sourceCode,
+        language_id: languageId,
+        stdin: input.stdin ?? "",
+        expected_output: expectedOutput,
+        cpu_time_limit: JUDGE0_CPU_TIME_LIMIT_SECONDS,
+        wall_time_limit: JUDGE0_WALL_TIME_LIMIT_SECONDS,
+        memory_limit: JUDGE0_MEMORY_LIMIT_KB,
+        enable_network: JUDGE0_ENABLE_NETWORK,
+        number_of_runs: 1,
+      }),
+    });
+  } catch (err) {
+    // If modern language ID is not found on older server, retry with fallback ID
+    const fallbackId = JUDGE0_FALLBACK_LANGUAGE_IDS[input.language];
+    if (fallbackId && fallbackId !== languageId) {
+      languageId = fallbackId;
+      createResponse = await judge0Fetch<Judge0SubmissionTokenResponse>("/submissions?base64_encoded=false&wait=false", {
+        method: "POST",
+        body: JSON.stringify({
+          source_code: input.sourceCode,
+          language_id: fallbackId,
+          stdin: input.stdin ?? "",
+          expected_output: expectedOutput,
+          cpu_time_limit: JUDGE0_CPU_TIME_LIMIT_SECONDS,
+          wall_time_limit: JUDGE0_WALL_TIME_LIMIT_SECONDS,
+          memory_limit: JUDGE0_MEMORY_LIMIT_KB,
+          enable_network: JUDGE0_ENABLE_NETWORK,
+          number_of_runs: 1,
+        }),
+      });
+    } else {
+      throw err;
+    }
+  }
 
   if (!createResponse.token) {
     throw new Error("Judge0 did not return a submission token.");

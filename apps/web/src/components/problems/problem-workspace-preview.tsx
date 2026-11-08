@@ -124,7 +124,7 @@ export function ProblemWorkspacePreview({
   const [problem, setProblem] = useState<ProblemDetail>(initialProblem);
   const [code, setCode] = useState(getTemplateForLanguage(initialProblem, "typescript"));
   const [selectedLanguage, setSelectedLanguage] = useState("typescript");
-  const [activeTestCaseTab, setActiveTestCaseTab] = useState<"case-1" | "case-2" | "custom">("case-1");
+  const [activeTestCaseTab, setActiveTestCaseTab] = useState<"case-1" | "case-2" | "case-3" | "custom">("case-1");
   const [customInput, setCustomInput] = useState(initialRuntimeSpec.sampleInput);
   const [expectedOutput, setExpectedOutput] = useState(initialRuntimeSpec.expectedOutput);
   const [notice, setNotice] = useState<string | null>(null);
@@ -372,7 +372,7 @@ export function ProblemWorkspacePreview({
   };
 
   // Test case tab selection
-  const handleSelectCaseTab = (tab: "case-1" | "case-2" | "custom") => {
+  const handleSelectCaseTab = (tab: "case-1" | "case-2" | "case-3" | "custom") => {
     setActiveTestCaseTab(tab);
     if (tab === "case-1") {
       updateCustomInput(problem.examples[0]?.input ?? runtimeSpec.sampleInput);
@@ -381,6 +381,14 @@ export function ProblemWorkspacePreview({
       if (problem.examples[1]) {
         updateCustomInput(problem.examples[1].input);
         updateExpectedOutput(problem.examples[1].output);
+      } else {
+        updateCustomInput(runtimeSpec.sampleInput);
+        updateExpectedOutput(runtimeSpec.expectedOutput);
+      }
+    } else if (tab === "case-3") {
+      if (problem.examples[2]) {
+        updateCustomInput(problem.examples[2].input);
+        updateExpectedOutput(problem.examples[2].output);
       } else {
         updateCustomInput(runtimeSpec.sampleInput);
         updateExpectedOutput(runtimeSpec.expectedOutput);
@@ -394,17 +402,37 @@ export function ProblemWorkspacePreview({
     setRunning(true);
     setConsoleStatus("Running");
 
-    if (canExecuteClientSide(selectedLanguage)) {
+    let effectiveLanguage = selectedLanguage;
+    // Auto-detect if user wrote Python syntax while TypeScript/JavaScript was selected
+    if (
+      (selectedLanguage === "typescript" || selectedLanguage === "javascript") &&
+      (/^\s*def\s+[a-zA-Z0-9_]+\s*\(/.test(code) || /^\s*class\s+Solution\s*:\s*\n\s*def\s+/.test(code))
+    ) {
+      effectiveLanguage = "python";
+      setSelectedLanguage("python");
+      toast.info("Detected Python syntax — switched runner to Python 3.12.", "Language Auto-Detected");
+    }
+
+    if (canExecuteClientSide(effectiveLanguage)) {
       setRuntimeLabel("Instant Client Sandbox (0ms)");
       setRawConsoleOutput("Running code in client sandbox...");
       try {
         const clientRes = await executeInClientSandbox(
-          selectedLanguage,
+          effectiveLanguage,
           code,
           customInput,
-          expectedOutput || undefined
+          expectedOutput || undefined,
+          problem.id
         );
-        if (clientRes.status !== "Runtime Error" || !clientRes.stderr?.includes("unavailable")) {
+
+        const isEnvRestriction =
+          !clientRes.stdout &&
+          (clientRes.stderr?.includes("Content Security Policy") ||
+            clientRes.stderr?.includes("unsafe-eval") ||
+            clientRes.stderr?.includes("unavailable") ||
+            clientRes.stderr?.includes("EvalError"));
+
+        if (!isEnvRestriction && clientRes.status !== "Runtime Error") {
           setConsoleStatus(clientRes.status);
           setRuntimeLabel(`Instant Sandbox • ${selectedLanguageLabel} (${clientRes.timeSeconds}s)`);
           setExecutionResult({
@@ -431,6 +459,10 @@ export function ProblemWorkspacePreview({
           setRunning(false);
           return;
         }
+
+        if (isEnvRestriction) {
+          console.warn("Client sandbox CSP restriction, falling back to authenticated Judge0 runner:", clientRes.stderr);
+        }
       } catch (clientErr) {
         console.warn("Client sandbox fallback to Judge0:", clientErr);
       }
@@ -442,7 +474,8 @@ export function ProblemWorkspacePreview({
 
     try {
       const response = await platformApi.runCode({
-        language: selectedLanguage,
+        problemId: problem.id,
+        language: effectiveLanguage,
         submission: code,
         stdin: customInput,
         expectedOutput: expectedOutput || undefined,
@@ -511,10 +544,19 @@ export function ProblemWorkspacePreview({
     setRawConsoleOutput("Submitting solution to full automated test suite...");
     toast.info("Submitting solution to automated test suite...", "Judge0 Evaluation");
 
+    let effectiveLanguage = selectedLanguage;
+    if (
+      (selectedLanguage === "typescript" || selectedLanguage === "javascript") &&
+      (/^\s*def\s+[a-zA-Z0-9_]+\s*\(/.test(code) || /^\s*class\s+Solution\s*:\s*\n\s*def\s+/.test(code))
+    ) {
+      effectiveLanguage = "python";
+      setSelectedLanguage("python");
+    }
+
     try {
       const response = await platformApi.submitSolution({
         problemId,
-        language: selectedLanguage,
+        language: effectiveLanguage,
         submission: code,
         stdin: customInput,
         expectedOutput: expectedOutput || undefined,
@@ -758,7 +800,10 @@ export function ProblemWorkspacePreview({
           </button>
           <button
             type="button"
-            onClick={() => setMobileTab("code")}
+            onClick={() => {
+              setMobileTab("code");
+              setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
+            }}
             className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               mobileTab === "code"
                 ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs"
@@ -770,7 +815,10 @@ export function ProblemWorkspacePreview({
           </button>
           <button
             type="button"
-            onClick={() => setMobileTab("console")}
+            onClick={() => {
+              setMobileTab("console");
+              setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
+            }}
             className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               mobileTab === "console"
                 ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs"
@@ -1092,19 +1140,28 @@ export function ProblemWorkspacePreview({
                     >
                       Case 1
                     </button>
-                    {problem.examples[1] && (
-                      <button
-                        type="button"
-                        onClick={() => handleSelectCaseTab("case-2")}
-                        className={`rounded px-2.5 py-1 text-xs font-semibold transition-colors ${
-                          activeTestCaseTab === "case-2"
-                            ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                            : "text-slate-400 hover:text-slate-200"
-                        }`}
-                      >
-                        Case 2
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCaseTab("case-2")}
+                      className={`rounded px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        activeTestCaseTab === "case-2"
+                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      Case 2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCaseTab("case-3")}
+                      className={`rounded px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        activeTestCaseTab === "case-3"
+                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      Case 3
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleSelectCaseTab("custom")}
@@ -1114,7 +1171,7 @@ export function ProblemWorkspacePreview({
                           : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      Custom Input
+                      Custom
                     </button>
                   </div>
                 </div>

@@ -218,24 +218,24 @@ export const saveCampusCohortInterventionData = async ({
 
 const sampleCandidates: RecruiterCandidateSummary[] = [
   {
-    handle: "aarav-sharma",
-    fullName: "Aarav Sharma",
-    headline: "Incoming SDE-1 @ Amazon | NIT Trichy CSE '26",
-    readinessScore: 92,
-    targetRoleSlugs: ["sde-1", "backend-engineer"],
-    targetCompanySlugs: ["amazon", "flipkart"],
+    handle: "vaibhav-maurya",
+    fullName: "Vaibhav Maurya",
+    headline: "Software Engineer & Platform Architect | CodeOrbit Creator",
+    readinessScore: 88,
+    targetRoleSlugs: ["full-stack-engineer", "backend-engineer"],
+    targetCompanySlugs: ["amazon", "google"],
     interviewMomentum: "rising",
     proofProfileShared: true,
     dpdpConsentGranted: true,
-    proctorScore: 98,
+    proctorScore: 99,
     verifiedBadge: generateCandidateProofBadge({
-      candidateHandle: "aarav-sharma",
-      fullName: "Aarav Sharma",
-      overallReadiness: 92,
-      proctorTrustScore: 98,
-      solvesCount: 420,
-      contestsParticipated: 14,
-      skillsVerified: ["Data Structures", "Algorithms", "Kafka", "AWS", "Java"],
+      candidateHandle: "vaibhav-maurya",
+      fullName: "Vaibhav Maurya",
+      overallReadiness: 88,
+      proctorTrustScore: 99,
+      solvesCount: 14,
+      contestsParticipated: 5,
+      skillsVerified: ["Data Structures", "Algorithms", "Next.js", "Python", "Systems Architecture"],
     }),
   },
   {
@@ -296,9 +296,9 @@ const sampleCandidates: RecruiterCandidateSummary[] = [
 
 const localRecruiterReviews: RecruiterCandidateReview[] = [
   {
-    candidateHandle: "aarav-sharma",
+    candidateHandle: "vaibhav-maurya",
     status: "shortlisted",
-    note: "Exceptional system design and Kafka latency explanation. Scheduled for Day-1 Onsite.",
+    note: "Exceptional platform systems architecture and real-time execution engine. Scheduled for Principal Architect review.",
     updatedAtIso: new Date().toISOString(),
   },
 ];

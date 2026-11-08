@@ -157,7 +157,7 @@ const runSuite = async () => {
   await test("Zero-Trust Recruiter Export strictly drops candidates without recruiter_sharing consent", async () => {
     const exportResult = await exportRecruiterCandidatesWithDpdp({
       candidateHandles: [
-        "aarav-sharma",      // has consent: true
+        "vaibhav-maurya",      // has consent: true
         "ananya-deshmukh",  // has consent: false (explicitly denied)
       ],
       format: "json",

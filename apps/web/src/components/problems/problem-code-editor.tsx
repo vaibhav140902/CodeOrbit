@@ -58,6 +58,8 @@ export function ProblemCodeEditor({
   onRun,
   onSubmit,
 }: ProblemCodeEditorProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
   const onRunRef = useRef(onRun);
   const onSubmitRef = useRef(onSubmit);
 
@@ -70,7 +72,37 @@ export function ProblemCodeEditor({
     configureMonacoLoader();
   }, []);
 
+  // Robust ResizeObserver to eliminate Mac Chrome and responsive layout freezes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      if (editorRef.current) {
+        editorRef.current.layout();
+      }
+    });
+    observer.observe(containerRef.current);
+
+    const handleWindowResize = () => {
+      if (editorRef.current) {
+        editorRef.current.layout();
+      }
+    };
+    window.addEventListener("resize", handleWindowResize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", handleWindowResize);
+    };
+  }, []);
+
   const handleMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: Monaco) => {
+    editorRef.current = editor;
+
+    // Perform multiple layout passes to guarantee pixel-accurate rendering regardless of DOM delays
+    editor.layout();
+    setTimeout(() => editor.layout(), 60);
+    setTimeout(() => editor.layout(), 250);
+
     // Cmd + Enter / Ctrl + Enter -> Run
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       onRunRef.current?.();
@@ -90,42 +122,44 @@ export function ProblemCodeEditor({
   };
 
   return (
-    <Editor
-      height="100%"
-      defaultLanguage="typescript"
-      language={language}
-      value={code}
-      loading={
-        <div className="flex h-full items-center justify-center text-sm text-slate-300">
-          Loading Monaco editor...
-        </div>
-      }
-      onMount={handleMount}
-      onChange={(value) => onChange(value ?? "")}
-      beforeMount={defineThemes}
-      theme={theme}
-      options={{
-        automaticLayout: true,
-        minimap: { enabled: false },
-        fontFamily: "IBM Plex Mono, monospace",
-        fontSize: 14,
-        lineHeight: 24,
-        scrollBeyondLastLine: false,
-        roundedSelection: false,
-        padding: { top: 12, bottom: 12 },
-        glyphMargin: false,
-        folding: true,
-        renderLineHighlight: "line",
-        quickSuggestions: true,
-        suggestOnTriggerCharacters: true,
-        tabSize: 2,
-        formatOnPaste: true,
-        formatOnType: true,
-        cursorBlinking: "smooth",
-        smoothScrolling: true,
-        bracketPairColorization: { enabled: true },
-        guides: { bracketPairs: true },
-      }}
-    />
+    <div ref={containerRef} className="h-full w-full relative">
+      <Editor
+        height="100%"
+        defaultLanguage="typescript"
+        language={language}
+        value={code}
+        loading={
+          <div className="flex h-full items-center justify-center text-sm text-slate-300">
+            Loading Monaco editor...
+          </div>
+        }
+        onMount={handleMount}
+        onChange={(value) => onChange(value ?? "")}
+        beforeMount={defineThemes}
+        theme={theme}
+        options={{
+          automaticLayout: true,
+          minimap: { enabled: false },
+          fontFamily: "IBM Plex Mono, monospace",
+          fontSize: 14,
+          lineHeight: 24,
+          scrollBeyondLastLine: false,
+          roundedSelection: false,
+          padding: { top: 12, bottom: 12 },
+          glyphMargin: false,
+          folding: true,
+          renderLineHighlight: "line",
+          quickSuggestions: true,
+          suggestOnTriggerCharacters: true,
+          tabSize: 2,
+          formatOnPaste: true,
+          formatOnType: true,
+          cursorBlinking: "smooth",
+          smoothScrolling: true,
+          bracketPairColorization: { enabled: true },
+          guides: { bracketPairs: true },
+        }}
+      />
+    </div>
   );
 }

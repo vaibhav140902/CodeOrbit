@@ -119,29 +119,29 @@ async function runTests() {
   // ---------------------------------------------------------------------------
   console.log("Test 4: DPDP Data Protection Act Compliant Candidate Export");
 
-  // Candidate with consent (aarav-sharma) + candidate without consent (ananya-deshmukh)
+  // Candidate with consent (vaibhav-maurya) + candidate without consent (ananya-deshmukh)
   const exportResult = await exportRecruiterCandidatesWithDpdp({
-    candidateHandles: ["aarav-sharma", "priya-patel", "ananya-deshmukh"],
+    candidateHandles: ["vaibhav-maurya", "priya-patel", "ananya-deshmukh"],
     format: "csv",
     purpose: "campus_placement_hiring",
   });
 
   const parsedExport = recruiterExportResponseSchema.parse(exportResult);
-  assert.equal(parsedExport.exportedCount, 2, "Consented candidates (aarav, priya) must be exported");
+  assert.equal(parsedExport.exportedCount, 2, "Consented candidates (vaibhav, priya) must be exported");
   assert.equal(parsedExport.blockedCount, 1, "Non-consented candidate (ananya) must be blocked");
   assert.ok(parsedExport.dpdpAuditRef.startsWith("DPDP-EXP-"), "Must generate audit reference");
-  assert.ok(parsedExport.csvData && parsedExport.csvData.includes("Aarav Sharma"));
+  assert.ok(parsedExport.csvData && parsedExport.csvData.includes("Vaibhav Maurya"));
   assert.ok(!parsedExport.csvData.includes("Ananya Deshmukh"), "Blocked candidate data must NEVER appear in export");
 
   // JSON format test
   const jsonExportResult = await exportRecruiterCandidatesWithDpdp({
-    candidateHandles: ["aarav-sharma"],
+    candidateHandles: ["vaibhav-maurya"],
     format: "json",
     purpose: "campus_placement_hiring",
   });
   assert.equal(jsonExportResult.exportedCount, 1);
   assert.ok(Array.isArray(jsonExportResult.jsonData));
-  assert.equal(jsonExportResult.jsonData[0].handle, "aarav-sharma");
+  assert.equal(jsonExportResult.jsonData[0].handle, "vaibhav-maurya");
 
   console.log("  ✓ DPDP compliance enforced: non-consented candidate blocked, audit ref logged.\n");
 

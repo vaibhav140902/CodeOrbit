@@ -1,4 +1,5 @@
 import type { ProblemDetail } from "@codeorbit/schema";
+import { LEETCODE_SPECS } from "./code-harness";
 
 type SupportedLanguage = "typescript" | "javascript" | "python" | "java" | "cpp";
 
@@ -776,8 +777,28 @@ int main() {
 export const getProblemRuntimeSpec = (problem: ProblemDetail) => specs[problem.id] ?? fallbackSpec(problem);
 
 export const getProblemTemplate = (problem: ProblemDetail, language: string) => {
-  const spec = getProblemRuntimeSpec(problem);
+  const leetcodeSpec = LEETCODE_SPECS[problem.id];
   const runtimeLanguage = language as SupportedLanguage;
+
+  if (leetcodeSpec) {
+    if (runtimeLanguage === "python") {
+      return `from typing import List, Dict, Optional, Tuple, Set\n\n${leetcodeSpec.pythonSignature}`;
+    }
+    if (runtimeLanguage === "javascript") {
+      return leetcodeSpec.jsSignature;
+    }
+    if (runtimeLanguage === "typescript") {
+      return leetcodeSpec.tsSignature;
+    }
+    if (runtimeLanguage === "java") {
+      return `import java.util.*;\n\n${leetcodeSpec.javaSignature}`;
+    }
+    if (runtimeLanguage === "cpp") {
+      return `#include <vector>\nusing namespace std;\n\n${leetcodeSpec.cppSignature}`;
+    }
+  }
+
+  const spec = getProblemRuntimeSpec(problem);
   const template = spec.templates[runtimeLanguage] ?? spec.templates.typescript;
 
   if (runtimeLanguage === "typescript") {

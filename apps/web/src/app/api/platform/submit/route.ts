@@ -7,6 +7,7 @@ import {
   rateLimitResponse,
 } from "@/lib/server/rate-limit";
 import { executeWithJudge0, Judge0ExecutionResult } from "@/lib/server/judge0";
+import { wrapCodeForExecution } from "@/lib/server/code-harness";
 import { recordSubmissionData } from "@/lib/server/platform-data";
 import { requireAuth, AuthenticationError } from "@/lib/server/auth-guard";
 import { getProblemTestSuite } from "@/lib/server/problem-test-suites";
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
     await assertTierRateLimit(request, "code_execution", viewer);
 
     const input = submitSchema.parse(await request.json());
+    const sourceCode = wrapCodeForExecution(input.problemId, input.language, input.submission);
     const testCases = getProblemTestSuite(input.problemId);
 
     let finalResult: Judge0ExecutionResult;
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
       const sampleCase = testCases.find((tc) => !tc.isHidden) || testCases[0];
       const sampleResult = await executeWithJudge0({
         language: input.language,
-        sourceCode: input.submission,
+        sourceCode,
         stdin: sampleCase.stdin,
         expectedOutput: sampleCase.expectedOutput,
       });
@@ -63,7 +65,7 @@ export async function POST(request: NextRequest) {
         for (const hiddenCase of hiddenCases) {
           const hiddenResult = await executeWithJudge0({
             language: input.language,
-            sourceCode: input.submission,
+            sourceCode,
             stdin: hiddenCase.stdin,
             expectedOutput: hiddenCase.expectedOutput,
           });

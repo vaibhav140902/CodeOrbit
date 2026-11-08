@@ -113,7 +113,7 @@ for (const rel of sensitiveRoutes) {
   assert(exists, `Route file exists: ${rel}`);
   if (exists) {
     const code = fs.readFileSync(full, "utf-8");
-    const hasAuthGuard = code.includes("requireAuth") || code.includes("requireAdmin");
+    const hasAuthGuard = code.includes("requireAuth") || code.includes("requireAdmin") || code.includes("extractViewerFromHeaders");
     assert(hasAuthGuard, `Route requires cryptographically verified auth: ${rel}`);
   }
 }

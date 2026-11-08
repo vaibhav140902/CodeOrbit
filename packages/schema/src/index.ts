@@ -151,6 +151,7 @@ export const billingVerificationSchema = z.object({
 });
 
 export const codeExecutionInputSchema = z.object({
+  problemId: z.string().optional(),
   language: z.string().min(1),
   submission: z.string().min(1).max(50_000),
   stdin: z.string().max(20_000).optional(),

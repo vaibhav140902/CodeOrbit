@@ -4,6 +4,8 @@
  * offloading server compute and eliminating 2-3s Judge0 network latency.
  */
 
+import { wrapCodeForExecution } from "@/lib/code-harness";
+
 export interface ClientExecutionResult {
   stdout: string | null;
   stderr: string | null;
@@ -23,13 +25,16 @@ export async function executeInClientSandbox(
   language: string,
   sourceCode: string,
   stdin: string = "",
-  expectedOutput?: string
+  expectedOutput?: string,
+  problemId?: string
 ): Promise<ClientExecutionResult> {
   const startTime = performance.now();
 
   return new Promise((resolve) => {
+    const wrappedCode = problemId ? wrapCodeForExecution(problemId, language, sourceCode) : sourceCode;
+
     // Strip TypeScript types or declare keywords if TS
-    let executableJs = sourceCode;
+    let executableJs = wrappedCode;
     if (language === "typescript") {
       executableJs = executableJs
         .replace(/declare\s+const\s+require\s*:\s*any\s*;?/g, "")

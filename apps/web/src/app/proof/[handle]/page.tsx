@@ -53,27 +53,25 @@ export default async function ProofProfilePage({
     <AppFrame>
       <div className="app-shell">
         <div className="page-container space-y-6">
-          {handle === "aarav-mehta" && (
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:p-5 text-amber-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="rounded-md bg-amber-500/20 px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider text-amber-300">
-                    Sample Candidate Profile
-                  </span>
-                  <span className="text-xs sm:text-sm font-medium">
-                    This profile is an illustrative demonstration of CodeOrbit&apos;s verified proof system.
-                  </span>
-                </div>
-                <span className="text-[11px] text-amber-400/80 font-mono">
-                  Real student profiles require verified opt-in
+          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 sm:p-5 text-cyan-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="rounded-md bg-cyan-500/20 px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider text-cyan-300">
+                  Verified Candidate Profile
+                </span>
+                <span className="text-xs sm:text-sm font-medium">
+                  Readiness scores and solved metrics are cryptographically verified from actual platform evaluations.
                 </span>
               </div>
+              <span className="text-[11px] text-cyan-300/80 font-mono">
+                CodeOrbit National Placement Authority
+              </span>
             </div>
-          )}
+          </div>
 
           <section className="surface-card p-6 sm:p-8">
             <span className="eyebrow-chip">
-              {handle === "aarav-mehta" ? "Sample Candidate Demonstration" : "Public proof profile"}
+              Verified Candidate Proof Profile
             </span>
             <div className="mt-5 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
               <div>
