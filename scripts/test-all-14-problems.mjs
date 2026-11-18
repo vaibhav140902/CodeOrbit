@@ -330,10 +330,10 @@ console.log("=".repeat(70));
 let passCount = 0;
 let failCount = 0;
 
-for (const [problemId, testCases] of Object.entries(CANONICAL_TEST_SUITES)) {
-  const code = REFERENCE_SOLUTIONS[problemId];
-  if (!code) {
-    console.error(`❌ [FAIL] Missing reference solution for ${problemId}`);
+for (const [problemId, code] of Object.entries(REFERENCE_SOLUTIONS)) {
+  const testCases = CANONICAL_TEST_SUITES[problemId];
+  if (!testCases) {
+    console.error(`❌ [FAIL] Missing test suite for ${problemId}`);
     failCount++;
     continue;
   }

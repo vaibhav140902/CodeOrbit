@@ -414,15 +414,26 @@ export function ProblemWorkspacePreview({
     }
 
     if (canExecuteClientSide(effectiveLanguage)) {
-      setRuntimeLabel("Instant Client Sandbox (0ms)");
-      setRawConsoleOutput("Running code in client sandbox...");
+      setRuntimeLabel(
+        effectiveLanguage === "python"
+          ? "Client Pyodide Sandbox (WASM)"
+          : "Instant Client Sandbox (0ms)"
+      );
+      setRawConsoleOutput(
+        effectiveLanguage === "python"
+          ? "Preparing Python Pyodide WASM sandbox..."
+          : "Running code in client sandbox..."
+      );
       try {
         const clientRes = await executeInClientSandbox(
           effectiveLanguage,
           code,
           customInput,
           expectedOutput || undefined,
-          problem.id
+          problem.id,
+          (statusMsg) => {
+            setRawConsoleOutput(statusMsg);
+          }
         );
 
         const isEnvRestriction =

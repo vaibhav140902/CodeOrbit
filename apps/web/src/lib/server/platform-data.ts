@@ -1343,11 +1343,17 @@ export const recordSubmissionData = async (
 
 /**
  * Computes deterministic verified technical readiness score (0-100)
- * based on verified DSA problem solving, streak, accuracy, and mock interview completion.
+ * using the Practical Fit Index (PFI):
+ * - DSA Competency (40%): difficulty-weighted scoring (Easy=6pts, Med=14pts, Hard=28pts)
+ *   with 10% time-complexity bonus for submissions running under median time.
+ * - Proctored OA / Bug-Fixing (30%): based on first-attempt acceptance rate and timed solving.
+ * - AI Mock Interview (30%): scaled based on mock interview count (0=0, 1=50, 2=75, 3+=90-100).
+ *
+ * Formula: overallScore = dsaCompetency * 0.40 + proctoredOA * 0.30 + mockInterview * 0.30
  */
 export const calculateReadinessScore = (
-  solvedProblems: Array<{ difficulty?: string; tags?: string[] }>,
-  submissions: Array<{ passed?: boolean | null; status?: string; created_at: string }>,
+  solvedProblems: Array<{ difficulty?: string; tags?: string[]; problem_id?: string; runtime_ms?: number | null }>,
+  submissions: Array<{ passed?: boolean | null; status?: string; created_at: string; problem_id?: string; runtime_ms?: number | null }>,
   options?: {
     mockInterviewsCompleted?: number;
     resumesCompiled?: number;
@@ -1356,22 +1362,174 @@ export const calculateReadinessScore = (
   const now = new Date();
   const nowIso = now.toISOString();
 
-  // 1. Difficulty breakdown & topic mastery calculation
+  // 1. Difficulty breakdown & DSA Competency (40%)
   let easySolved = 0;
   let mediumSolved = 0;
   let hardSolved = 0;
 
-  for (const p of solvedProblems) {
-    const diff = (p.difficulty || "Easy").toLowerCase();
-    if (diff === "hard") hardSolved++;
-    else if (diff === "medium") mediumSolved++;
-    else easySolved++;
+  // Compute median runtime per problem from submissions if runtime timing data exists
+  const runtimesByProblem = new Map<string, number[]>();
+  for (const s of submissions) {
+    if (typeof s.runtime_ms === "number" && s.runtime_ms > 0) {
+      const pid = s.problem_id || "default";
+      const list = runtimesByProblem.get(pid) || [];
+      list.push(s.runtime_ms);
+      runtimesByProblem.set(pid, list);
+    }
   }
 
-  const rawMasteryPoints = easySolved * 6 + mediumSolved * 14 + hardSolved * 28;
-  const topicMasteryScore = Math.min(100, Math.round((rawMasteryPoints / 70) * 100));
+  const problemMedians = new Map<string, number>();
+  for (const [pid, runtimes] of runtimesByProblem.entries()) {
+    const sorted = [...runtimes].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    problemMedians.set(pid, median);
+  }
 
-  // 2. Consistency & Streak
+  let totalDsaPoints = 0;
+  for (const p of solvedProblems) {
+    const diff = (p.difficulty || "Easy").toLowerCase();
+    let basePts = 6;
+    let benchmarkMedian = 60; // ms
+    if (diff === "hard") {
+      hardSolved++;
+      basePts = 28;
+      benchmarkMedian = 250;
+    } else if (diff === "medium") {
+      mediumSolved++;
+      basePts = 14;
+      benchmarkMedian = 120;
+    } else {
+      easySolved++;
+      basePts = 6;
+      benchmarkMedian = 60;
+    }
+
+    // Time-complexity bonus: +10% bonus if submission runs under median time for that problem
+    let hasTimeBonus = false;
+    const pid = p.problem_id;
+    if (pid) {
+      const median = problemMedians.get(pid) ?? benchmarkMedian;
+      const sub = submissions.find(
+        (s) => s.problem_id === pid && (s.passed === true || s.status === "Accepted") && typeof s.runtime_ms === "number" && s.runtime_ms < median
+      );
+      if (sub) {
+        hasTimeBonus = true;
+      }
+    } else if (typeof p.runtime_ms === "number" && p.runtime_ms < benchmarkMedian) {
+      hasTimeBonus = true;
+    }
+
+    const problemPoints = hasTimeBonus ? basePts * 1.10 : basePts;
+    totalDsaPoints += problemPoints;
+  }
+
+  // DSA Competency Score (0-100, normalized so ~70 raw pts = 100)
+  const dsaCompetencyScore = solvedProblems.length > 0 ? Math.min(100, Math.round((totalDsaPoints / 70) * 100)) : 0;
+  const topicMasteryScore = dsaCompetencyScore;
+
+  // 2. Proctored OA / Bug-Fixing (30%)
+  // First-attempt acceptance rate: weight heavily (70% of OA score)
+  let uniqueProblemsAttempted = 0;
+  let uniqueProblemsFirstAttemptPassed = 0;
+  const hasProblemIds = submissions.some((s) => Boolean(s.problem_id));
+
+  if (hasProblemIds) {
+    const submissionsByProblem = new Map<string, typeof submissions>();
+    for (const s of submissions) {
+      const pid = s.problem_id || "unknown";
+      const list = submissionsByProblem.get(pid) || [];
+      list.push(s);
+      submissionsByProblem.set(pid, list);
+    }
+    uniqueProblemsAttempted = submissionsByProblem.size;
+    for (const [, pSubs] of submissionsByProblem.entries()) {
+      const sorted = [...pSubs].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      const first = sorted[0];
+      if (first && (first.passed === true || first.status === "Accepted")) {
+        uniqueProblemsFirstAttemptPassed++;
+      }
+    }
+  } else if (submissions.length > 0) {
+    const passed = submissions.filter((s) => s.passed === true || s.status === "Accepted").length;
+    uniqueProblemsAttempted = submissions.length;
+    uniqueProblemsFirstAttemptPassed = passed;
+  } else if (solvedProblems.length > 0) {
+    uniqueProblemsAttempted = solvedProblems.length;
+    uniqueProblemsFirstAttemptPassed = solvedProblems.length;
+  }
+
+  const firstAttemptAcceptanceRate =
+    uniqueProblemsAttempted > 0
+      ? uniqueProblemsFirstAttemptPassed / uniqueProblemsAttempted
+      : 0;
+
+  // Timed conditions solving: proxy via session duration or intervals between first view/submission
+  let timedSolvedCount = 0;
+  if (submissions.length > 1) {
+    const sortedSubs = [...submissions].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    for (let i = 0; i < sortedSubs.length; i++) {
+      const current = sortedSubs[i];
+      if (current.passed === true || current.status === "Accepted") {
+        if (i > 0) {
+          const prevTime = new Date(sortedSubs[i - 1].created_at).getTime();
+          const currTime = new Date(current.created_at).getTime();
+          const diffMinutes = Math.abs(currTime - prevTime) / (1000 * 60);
+          if (diffMinutes <= 45 || diffMinutes >= 720) {
+            timedSolvedCount++;
+          }
+        } else {
+          timedSolvedCount++;
+        }
+      }
+    }
+  } else if (submissions.length === 1 && (submissions[0].passed === true || submissions[0].status === "Accepted")) {
+    timedSolvedCount = 1;
+  } else if (solvedProblems.length > 0) {
+    timedSolvedCount = Math.min(solvedProblems.length, 4);
+  }
+
+  const firstAttemptScore = Math.round(firstAttemptAcceptanceRate * 100);
+  const timedSolvingScore = Math.min(100, Math.round((timedSolvedCount / 4) * 100));
+
+  const proctoredOaScore =
+    uniqueProblemsAttempted === 0 && solvedProblems.length === 0
+      ? 0
+      : Math.min(100, Math.max(0, Math.round(firstAttemptScore * 0.70 + timedSolvingScore * 0.30)));
+
+  // 3. AI Mock Interview (30%)
+  // Scale: 0 interviews = 0 score, 1 = 50, 2 = 75, 3+ = 90-100 based on mock count
+  const mockCount = options?.mockInterviewsCompleted ?? 0;
+  let mockInterviewScore = 0;
+  if (mockCount >= 3) {
+    mockInterviewScore = Math.min(100, 90 + (mockCount - 3) * 5);
+  } else if (mockCount === 2) {
+    mockInterviewScore = 75;
+  } else if (mockCount === 1) {
+    mockInterviewScore = 50;
+  } else {
+    mockInterviewScore = 0;
+  }
+
+  // 4. Practical Fit Index (PFI) Overall Score
+  // overallScore = dsaCompetency * 0.40 + proctoredOA * 0.30 + mockInterview * 0.30
+  const overallScore = Math.min(
+    100,
+    Math.max(
+      0,
+      Math.round(
+        dsaCompetencyScore * 0.40 +
+        proctoredOaScore * 0.30 +
+        mockInterviewScore * 0.30
+      )
+    )
+  );
+
+  // Consistency & Streak (retained for backward compatibility)
   const uniqueDays = new Set(submissions.map((s) => s.created_at.slice(0, 10)));
   const streak = Math.min(uniqueDays.size, 14);
   let consistencyScore = 15;
@@ -1380,7 +1538,7 @@ export const calculateReadinessScore = (
   else if (streak >= 2) consistencyScore = 55;
   else if (streak >= 1) consistencyScore = 35;
 
-  // 3. Accuracy & Acceptance Rate
+  // Accuracy & Acceptance Rate (retained for backward compatibility)
   const totalSubmissions = submissions.length;
   const acceptedSubmissions = submissions.filter(
     (s) => s.passed === true || s.status === "Accepted"
@@ -1401,7 +1559,7 @@ export const calculateReadinessScore = (
     accuracyScore = 80;
   }
 
-  // 4. Company-Track Alignment
+  // Company-Track Alignment (retained for backward compatibility)
   const companyTags = new Set(["amazon", "google", "microsoft", "tcs", "infosys", "flipkart", "meta"]);
   let companyTaggedSolved = 0;
   for (const p of solvedProblems) {
@@ -1411,30 +1569,14 @@ export const calculateReadinessScore = (
   }
   const companyTrackScore = Math.min(
     100,
-    Math.round((companyTaggedSolved * 20 + solvedProblems.length * 5))
+    Math.round(companyTaggedSolved * 20 + solvedProblems.length * 5)
   );
 
-  // 5. Interview & ATS Readiness
-  const mockCount = options?.mockInterviewsCompleted ?? 0;
+  // ATS Readiness (retained for backward compatibility)
   const resumeCount = options?.resumesCompiled ?? 0;
   const interviewAtsScore = Math.min(100, 40 + mockCount * 25 + resumeCount * 15);
 
-  // 6. Weighted Composite Overall Score
-  const overallScore = Math.min(
-    100,
-    Math.max(
-      0,
-      Math.round(
-        topicMasteryScore * 0.30 +
-        consistencyScore * 0.20 +
-        accuracyScore * 0.20 +
-        companyTrackScore * 0.15 +
-        interviewAtsScore * 0.15
-      )
-    )
-  );
-
-  // 7. Tier Classification
+  // Tier Classification
   let tier: ReadinessScoreTier = "Needs Practice";
   if (overallScore >= 90) tier = "Day-1 FAANG Ready";
   else if (overallScore >= 75) tier = "Top Tier Candidate";
@@ -1447,6 +1589,14 @@ export const calculateReadinessScore = (
     consistencyScore,
     accuracyScore,
     interviewAtsScore,
+    dsaCompetencyScore,
+    proctoredOaScore,
+    mockInterviewScore,
+    pfiBreakdown: {
+      dsaWeight: 0.40,
+      oaWeight: 0.30,
+      interviewWeight: 0.30,
+    },
     solvedCount: solvedProblems.length,
     totalSubmissions,
     streak,

@@ -24,6 +24,7 @@ const suites = [
   { file: "test-mock-interview.mjs", title: "Milestone 8: AI Voice/Chat Mock Interviewer & Scorecard" },
   { file: "test-b2b-portal.mjs", title: "Milestone 9: B2B TPO Batch Analytics & Cryptographic Proof Badges" },
   { file: "test-phase2-growth.mjs", title: "Growth & Telemetry: Viral Loops, Health & NIRF Export" },
+  { file: "adversarial-security-test.mjs", title: "Milestone 10 / Adversarial Audit: Payload Spoofing, RBAC, DPDP & Curriculum" },
 ];
 
 let totalPassed = 0;

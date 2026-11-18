@@ -61,6 +61,12 @@ export const readinessScoreBreakdownSchema = z.object({
   acceptanceRatePercent: z.number().min(0).max(100),
 });
 
+export const pfiBreakdownSchema = z.object({
+  dsaWeight: z.number().default(0.4),
+  oaWeight: z.number().default(0.3),
+  interviewWeight: z.number().default(0.3),
+});
+
 export const readinessScoreSchema = z.object({
   overallScore: z.number().int().min(0).max(100),
   topicMasteryScore: z.number().int().min(0).max(100),
@@ -68,6 +74,14 @@ export const readinessScoreSchema = z.object({
   consistencyScore: z.number().int().min(0).max(100),
   accuracyScore: z.number().int().min(0).max(100),
   interviewAtsScore: z.number().int().min(0).max(100),
+  dsaCompetencyScore: z.number().min(0).max(100).default(0),
+  proctoredOaScore: z.number().min(0).max(100).default(0),
+  mockInterviewScore: z.number().min(0).max(100).default(0),
+  pfiBreakdown: pfiBreakdownSchema.default({
+    dsaWeight: 0.4,
+    oaWeight: 0.3,
+    interviewWeight: 0.3,
+  }),
   solvedCount: z.number().int().nonnegative(),
   totalSubmissions: z.number().int().nonnegative(),
   streak: z.number().int().nonnegative(),
@@ -482,6 +496,9 @@ export const readinessGraphSchema = z.object({
   mockInterviewScore: z.number().min(0).max(100),
   resumeFitScore: z.number().min(0).max(100),
   projectEvidenceScore: z.number().min(0).max(100),
+  dsaCompetencyScore: z.number().min(0).max(100).optional(),
+  proctoredOaScore: z.number().min(0).max(100).optional(),
+  pfiBreakdown: pfiBreakdownSchema.optional(),
   weakTopics: z.array(z.string().min(1)),
   companyScores: z.array(readinessAreaScoreSchema),
   roleScores: z.array(readinessAreaScoreSchema),
@@ -870,6 +887,7 @@ export type UserProfile = z.infer<typeof userProfileSchema>;
 export type ReadinessScoreTier = z.infer<typeof readinessScoreTierSchema>;
 export type ReadinessScoreBreakdown = z.infer<typeof readinessScoreBreakdownSchema>;
 export type ReadinessScore = z.infer<typeof readinessScoreSchema>;
+export type PfiBreakdown = z.infer<typeof pfiBreakdownSchema>;
 export type DashboardSummary = z.infer<typeof dashboardSummarySchema>;
 export type LeaderboardEntry = z.infer<typeof leaderboardEntrySchema>;
 export type LeaderboardSummary = z.infer<typeof leaderboardSummarySchema>;
