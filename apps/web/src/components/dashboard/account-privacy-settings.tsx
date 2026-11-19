@@ -52,7 +52,7 @@ export function AccountPrivacySettings() {
           <span className="eyebrow-chip">DPDP Act 2023 Compliance</span>
           <h2 className="text-xl font-bold sm:text-2xl mt-1">Data Privacy & Account Controls</h2>
           <p className="text-xs text-soft mt-1">
-            Under India's Digital Personal Data Protection Act 2023, you have full control over your candidate personal data, code telemetry, and account lifecycle.
+            Under India&apos;s Digital Personal Data Protection Act 2023, you have full control over your candidate personal data, code telemetry, and account lifecycle.
           </p>
         </div>
         <div className="text-xs text-muted font-mono">

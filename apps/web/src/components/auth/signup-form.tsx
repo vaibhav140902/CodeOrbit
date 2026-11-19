@@ -190,7 +190,7 @@ function SignupFormContent() {
                 <Link href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">
                   Terms of Service
                 </Link>{" "}
-                and consent to the processing of my educational and interview data under India's{" "}
+                and consent to the processing of my educational and interview data under India&apos;s{" "}
                 <Link href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">
                   DPDP Act 2023 & Privacy Policy
                 </Link>.

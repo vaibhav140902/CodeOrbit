@@ -41,8 +41,7 @@ export async function POST(request: NextRequest) {
 
     if (validatedUpload.type === "pdf") {
       // Dynamic import to prevent bundler bundling issues
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfParseModule = await import("pdf-parse" as any);
+      const pdfParseModule = await import("pdf-parse");
       const pdfParse = pdfParseModule.default || pdfParseModule;
       const pdfData = await pdfParse(buffer);
       extractedText = pdfData.text || "";

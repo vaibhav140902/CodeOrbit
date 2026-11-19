@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default {
+const config = {
   plugins: {
     tailwindcss: {
       config: path.resolve(__dirname, "tailwind.config.js"),
@@ -11,3 +11,5 @@ export default {
     autoprefixer: {},
   },
 };
+
+export default config;
