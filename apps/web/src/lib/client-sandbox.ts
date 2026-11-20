@@ -8,7 +8,7 @@
  * - Python runs via Pyodide (WASM) in a dedicated, cached Worker loaded from https://cdn.jsdelivr.net/pyodide/.
  */
 
-import { wrapCodeForExecution } from "@/lib/code-harness";
+import { areOutputsEquivalent, wrapCodeForExecution } from "@/lib/code-harness";
 
 export interface ClientExecutionResult {
   stdout: string | null;
@@ -396,7 +396,7 @@ export async function executeInClientSandbox(
 
   if (expectedOutput !== undefined && expectedOutput !== null && expectedOutput.trim()) {
     const cleanExpected = expectedOutput.trim();
-    passed = stdout === cleanExpected;
+    passed = areOutputsEquivalent(stdout, cleanExpected);
     status = passed ? "Accepted" : "Wrong Answer";
   }
 

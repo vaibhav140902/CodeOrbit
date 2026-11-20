@@ -5,13 +5,13 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://apis.google.com/ https://checkout.razorpay.com https://cdn.razorpay.com https://*.razorpay.com https://razorpay.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' blob: 'wasm-unsafe-eval' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://apis.google.com/ https://checkout.razorpay.com https://cdn.razorpay.com https://*.razorpay.com https://razorpay.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.razorpay.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com data: https://*.razorpay.com",
-  `connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://asia-south2-leetcode-clone-3ac0a.cloudfunctions.net https://*.supabase.co https://generativelanguage.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://api.razorpay.com https://lumberjack.razorpay.com https://*.razorpay.com https://razorpay.com${isDevelopment ? " ws://localhost:* http://localhost:* http://127.0.0.1:*" : ""}`,
+  `connect-src 'self' blob: data: https://cdn.jsdelivr.net https://pypi.org https://files.pythonhosted.org https://cdnjs.cloudflare.com https://asia-south2-leetcode-clone-3ac0a.cloudfunctions.net https://*.supabase.co https://generativelanguage.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://api.razorpay.com https://lumberjack.razorpay.com https://*.razorpay.com https://razorpay.com${isDevelopment ? " ws://localhost:* http://localhost:* http://127.0.0.1:*" : ""}`,
   "frame-src 'self' https://*.firebaseapp.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com https://razorpay.com https://accounts.google.com",
-  "worker-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+  "worker-src 'self' blob: 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
   "child-src 'self' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.razorpay.com",
   "object-src 'none'",
   "base-uri 'self'",

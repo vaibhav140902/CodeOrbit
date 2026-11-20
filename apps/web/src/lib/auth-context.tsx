@@ -9,6 +9,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   updateProfile,
   type User,
@@ -26,6 +27,7 @@ interface AuthContextValue {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   signOutCurrentUser: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -199,6 +201,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           throw error;
         }
+      },
+      sendPasswordReset: async (email: string) => {
+        const services = await getFirebaseClientServices();
+        if (!services) {
+          throw new Error("Firebase auth is not configured.");
+        }
+        await sendPasswordResetEmail(services.auth, email);
       },
       signOutCurrentUser: async () => {
         const services = await getFirebaseClientServices();

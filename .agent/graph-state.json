@@ -1,0 +1,42 @@
+{
+  "active_node": "COMPLETED",
+  "loop_iteration": 1,
+  "retry_counts": {},
+  "files_mapped": [
+    "apps/web/next.config.ts",
+    "apps/web/src/components/problems/problem-workspace-preview.tsx",
+    "apps/web/src/components/problems/problem-code-editor.tsx",
+    "apps/web/src/lib/client-sandbox.ts",
+    "apps/web/src/lib/code-harness.ts",
+    "apps/web/src/lib/server/code-harness.ts",
+    "apps/web/src/lib/server/judge0.ts",
+    "apps/web/src/app/api/platform/submit/route.ts",
+    "apps/web/src/app/api/platform/run/route.ts",
+    "apps/web/src/data/gauntlet-roles.ts",
+    "apps/web/src/lib/server/gauntlet-engine.ts",
+    "apps/web/src/app/gauntlet/page.tsx",
+    "apps/web/src/app/pricing/page.tsx",
+    "apps/web/src/components/pricing/pricing-overview.tsx",
+    "apps/web/src/data/pricing-plans.ts",
+    "apps/web/src/app/leaderboard/page.tsx",
+    "apps/web/src/components/leaderboard/leaderboard-overview.tsx",
+    "apps/web/src/components/auth/login-form.tsx",
+    "apps/web/src/app/forgot-password/page.tsx",
+    "apps/web/src/app/reset-password/page.tsx",
+    "apps/web/src/app/auth/callback/route.ts",
+    "scripts/test-leetcode-harness.mjs",
+    "scripts/run-all-verifications.mjs"
+  ],
+  "failing_checks": [],
+  "gates": {
+    "G1_zero_static_and_truth_config": true,
+    "G2_free_dsa_0ms_wasm_and_server_judge": true,
+    "G3_paid_4_round_gauntlet_and_anti_cheat": true,
+    "G4_unified_upi_pricing_and_expiry_keys": true,
+    "G5_b2b_campuses_naac_nirf_and_recruiters": true,
+    "G6_auth_forgot_password_and_google_oauth": true,
+    "G7_ux_transitions_skeletons_and_0_to_100_viral_loop": true,
+    "G8_typecheck_and_production_build_clean": true,
+    "G9_adversarial_qa_and_17_verification_suites": true
+  }
+}

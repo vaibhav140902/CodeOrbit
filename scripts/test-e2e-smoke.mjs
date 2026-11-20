@@ -51,7 +51,7 @@ async function runSmokeTests() {
     "/privacy",
     "/problems",
     "/problems/two-sum",
-    "/proof/aarav-mehta",
+    "/proof/vaibhav-maurya",
     "/readiness-score",
     "/recruiter-beta",
     "/resume",

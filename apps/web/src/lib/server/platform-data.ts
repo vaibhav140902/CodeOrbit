@@ -1949,17 +1949,43 @@ const ensureRazorpayConfigured = () => {
 
 const BILLING_PLANS_MAP: Record<
   PaidBillingPlanId,
-  { name: string; amountPaise: number; validityDays: number }
+  { name: string; amountPaise: number; validityDays: number; maxMocks?: number }
 > = {
+  "drive-booster-7d": {
+    name: "7-Day Drive Booster",
+    amountPaise: 9900,
+    validityDays: 7,
+    maxMocks: 1,
+  },
+  "sprint-pass-30d": {
+    name: "30-Day Sprint Pass",
+    amountPaise: 49900,
+    validityDays: 30,
+    maxMocks: 5,
+  },
+  "season-pass-120d": {
+    name: "120-Day Season Pass",
+    amountPaise: 149900,
+    validityDays: 120,
+    maxMocks: 30,
+  },
+  "interview-topup-5": {
+    name: "5-Interview Top-Up",
+    amountPaise: 19900,
+    validityDays: 30,
+    maxMocks: 5,
+  },
   "premium-monthly": {
     name: "30-Day Sprint Pass",
     amountPaise: 49900,
     validityDays: 30,
+    maxMocks: 5,
   },
   "premium-lifetime": {
     name: "4-Month Season Pass",
     amountPaise: 149900,
     validityDays: 120,
+    maxMocks: 30,
   },
 };
 

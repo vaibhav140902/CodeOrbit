@@ -1,3 +1,5 @@
+import { areOutputsEquivalent } from "./code-harness";
+
 const trimTrailingSlash = (value: string) => value.trim().replace(/\/+$/, "");
 
 const JUDGE0_URL = trimTrailingSlash(process.env.JUDGE0_URL ?? "https://ce.judge0.com");
@@ -232,12 +234,15 @@ export const executeWithJudge0 = async (input: Judge0ExecutionInput): Promise<Ju
   const stderr = normalizeText(lastResult?.stderr);
   const compileOutput = normalizeText(lastResult?.compile_output);
   const normalizedExpectedOutput = expectedOutput ? normalizeText(expectedOutput) : null;
-  const passed = normalizedExpectedOutput === null ? null : lastResult?.status?.id === 3;
+  const isEquivalent = areOutputsEquivalent(stdout, normalizedExpectedOutput);
+  const passed = normalizedExpectedOutput === null ? null : (lastResult?.status?.id === 3 || isEquivalent);
+  const resolvedStatus = passed ? "Accepted" : toSubmissionStatus(lastResult?.status?.id);
+  const resolvedJudgeStatus = passed ? "Accepted" : judgeStatus;
 
   return {
     judgeToken: createResponse.token,
-    status: toSubmissionStatus(lastResult?.status?.id),
-    judgeStatus,
+    status: resolvedStatus,
+    judgeStatus: resolvedJudgeStatus,
     stdout,
     stderr,
     compileOutput,

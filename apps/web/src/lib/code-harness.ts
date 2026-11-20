@@ -17,6 +17,42 @@ export interface LeetCodeMethodSpec {
   cppDriver: string;
 }
 
+/**
+ * Normalizes and compares actual output against expected output across formats.
+ * Handles space-separated numbers vs JSON arrays (e.g., "0 1" vs "[0,1]"),
+ * boolean capitalization (e.g., "True" vs "true"), and quoted strings.
+ */
+export function areOutputsEquivalent(
+  actual: string | null | undefined,
+  expected: string | null | undefined
+): boolean {
+  if (actual === null || actual === undefined || expected === null || expected === undefined) {
+    return actual === expected;
+  }
+  const cleanActual = actual.trim();
+  const cleanExpected = expected.trim();
+  if (cleanActual === cleanExpected) return true;
+
+  // Case-insensitive boolean match: true vs True
+  if (cleanActual.toLowerCase() === cleanExpected.toLowerCase()) return true;
+
+  // Array normalization: [0, 1] vs [0,1] vs 0 1
+  const normArray = (str: string) =>
+    str.replace(/[\[\]]/g, "").replace(/,/g, " ").replace(/\s+/g, " ").trim();
+
+  const normA = normArray(cleanActual);
+  const normE = normArray(cleanExpected);
+  if (normA === normE && normA !== "") {
+    return true;
+  }
+
+  // Quote normalization: "hello" vs hello
+  const stripQuotes = (str: string) => str.replace(/^["'](.*)["']$/, "$1");
+  if (stripQuotes(cleanActual) === stripQuotes(cleanExpected)) return true;
+
+  return false;
+}
+
 export const LEETCODE_SPECS: Record<string, LeetCodeMethodSpec> = {
   "two-sum": {
     methodName: "twoSum",
@@ -59,9 +95,8 @@ public:
 if __name__ == "__main__":
     import sys
     raw = sys.stdin.read().strip()
-    lines = raw.splitlines() if raw else []
-    nums = list(map(int, lines[0].split())) if lines else []
-    target = int(lines[1]) if len(lines) > 1 else 0
+    nums = _co_parse_array_int(raw, "nums")
+    target = _co_parse_int(raw, "target", 0)
     sol = Solution() if 'Solution' in globals() else None
     if sol and hasattr(sol, 'twoSum'):
         ans = sol.twoSum(nums, target)
@@ -71,14 +106,46 @@ if __name__ == "__main__":
         ans = solve(nums, target)
     else:
         raise Exception("Function twoSum not found")
-    print(" ".join(map(str, ans)))
+    if ans is not None:
+        print(" ".join(map(str, ans)))
 `,
     jsDriver: `
 const fs = require("fs");
 const raw = fs.readFileSync(0, "utf8").trim();
-const lines = raw ? raw.split(/\\r?\\n/) : [];
-const nums = lines[0] ? lines[0].trim().split(/\\s+/).map(Number) : [];
-const target = lines[1] ? Number(lines[1]) : 0;
+
+function _co_parse_array_int(raw, paramName) {
+  const m = raw.match(new RegExp(paramName + "\\\\s*=\\\\s*(\\\\[[^\\\\]]*\\\\])"));
+  if (m) {
+    try { return JSON.parse(m[1]); } catch(e) {}
+  }
+  const mBracket = raw.match(/(\\[[^\\]]*\\])/);
+  if (mBracket) {
+    try { return JSON.parse(mBracket[1]); } catch(e) {}
+  }
+  const lines = raw.split(/\\r?\\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length > 0) {
+    return (lines[0].match(/-?\\d+/g) || []).map(Number);
+  }
+  return [];
+}
+
+function _co_parse_int(raw, paramName, defVal) {
+  if (defVal === undefined) defVal = 0;
+  const m = raw.match(new RegExp(paramName + "\\\\s*=\\\\s*(-?\\d+)"));
+  if (m) return parseInt(m[1], 10);
+  const lines = raw.split(/\\r?\\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length > 1) {
+    const m2 = lines[1].match(/-?\\d+/);
+    if (m2) return parseInt(m2[0], 10);
+  } else if (lines.length === 1) {
+    const all = (lines[0].match(/-?\\d+/g) || []).map(Number);
+    if (all.length >= 2) return all[all.length - 1];
+  }
+  return defVal;
+}
+
+const nums = _co_parse_array_int(raw, "nums");
+const target = _co_parse_int(raw, "target", 0);
 let ans;
 if (typeof Solution !== "undefined" && new Solution().twoSum) {
   ans = new Solution().twoSum(nums, target);
@@ -95,10 +162,39 @@ if (Array.isArray(ans)) {
 public class Main {
     public static void main(String[] args) throws Exception {
         java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(System.in));
-        String first = reader.readLine();
-        String second = reader.readLine();
-        int[] nums = first == null || first.trim().isEmpty() ? new int[0] : java.util.Arrays.stream(first.trim().split("\\\\s+")).mapToInt(Integer::parseInt).toArray();
-        int target = second == null || second.trim().isEmpty() ? 0 : Integer.parseInt(second.trim());
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\\n");
+        }
+        String raw = sb.toString().trim();
+        java.util.List<Integer> numsList = new java.util.ArrayList<>();
+        int target = 0;
+        
+        java.util.regex.Matcher mArray = java.util.regex.Pattern.compile("\\[([^\\]]*)\\]").matcher(raw);
+        if (mArray.find()) {
+            String inner = mArray.group(1);
+            for (String part : inner.split("[,\\\\s]+")) {
+                if (!part.trim().isEmpty()) numsList.add(Integer.parseInt(part.trim()));
+            }
+        }
+        java.util.regex.Matcher mTarget = java.util.regex.Pattern.compile("target\\\\s*=\\\\s*(-?\\\\d+)").matcher(raw);
+        if (mTarget.find()) {
+            target = Integer.parseInt(mTarget.group(1));
+        } else {
+            String[] lines = raw.split("\\\\r?\\\\n");
+            if (numsList.isEmpty() && lines.length > 0) {
+                for (String part : lines[0].split("[,\\\\s]+")) {
+                    if (!part.trim().isEmpty()) numsList.add(Integer.parseInt(part.trim()));
+                }
+            }
+            if (lines.length > 1) {
+                java.util.regex.Matcher m2 = java.util.regex.Pattern.compile("-?\\\\d+").matcher(lines[1]);
+                if (m2.find()) target = Integer.parseInt(m2.group());
+            }
+        }
+        int[] nums = new int[numsList.size()];
+        for (int i = 0; i < numsList.size(); i++) nums[i] = numsList.get(i);
         Solution sol = new Solution();
         int[] ans = sol.twoSum(nums, target);
         StringBuilder out = new StringBuilder();
@@ -114,14 +210,42 @@ public class Main {
 int main() {
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
-    std::string numsLine, targetLine;
-    std::getline(std::cin, numsLine);
-    std::getline(std::cin, targetLine);
-    std::stringstream numsStream(numsLine);
+    std::string raw, line;
+    while (std::getline(std::cin, line)) {
+        raw += line + "\\n";
+    }
     std::vector<int> nums;
-    int value;
-    while (numsStream >> value) nums.push_back(value);
-    int target = targetLine.empty() ? 0 : std::stoi(targetLine);
+    int target = 0;
+    size_t bOpen = raw.find('[');
+    size_t bClose = raw.find(']');
+    if (bOpen != std::string::npos && bClose != std::string::npos && bClose > bOpen) {
+        std::string inner = raw.substr(bOpen + 1, bClose - bOpen - 1);
+        std::replace(inner.begin(), inner.end(), ',', ' ');
+        std::stringstream ss(inner);
+        int v;
+        while (ss >> v) nums.push_back(v);
+    }
+    size_t tPos = raw.find("target");
+    if (tPos != std::string::npos) {
+        size_t eqPos = raw.find('=', tPos);
+        if (eqPos != std::string::npos) {
+            std::stringstream ss(raw.substr(eqPos + 1));
+            ss >> target;
+        }
+    } else {
+        std::stringstream ss(raw);
+        std::string l1, l2;
+        if (std::getline(ss, l1) && nums.empty()) {
+            std::replace(l1.begin(), l1.end(), ',', ' ');
+            std::stringstream ss1(l1);
+            int v;
+            while (ss1 >> v) nums.push_back(v);
+        }
+        if (std::getline(ss, l2)) {
+            std::stringstream ss2(l2);
+            ss2 >> target;
+        }
+    }
     Solution sol;
     auto ans = sol.twoSum(nums, target);
     for (size_t i = 0; i < ans.size(); ++i) {
@@ -168,7 +292,8 @@ public:
     pythonDriver: `
 if __name__ == "__main__":
     import sys
-    text = sys.stdin.read().strip()
+    raw = sys.stdin.read().strip()
+    text = _co_parse_str(raw, "s")
     sol = Solution() if 'Solution' in globals() else None
     if sol and hasattr(sol, 'reverseString'):
         ans = sol.reverseString(text)
@@ -182,7 +307,14 @@ if __name__ == "__main__":
 `,
     jsDriver: `
 const fs = require("fs");
-const text = fs.readFileSync(0, "utf8").trim();
+const raw = fs.readFileSync(0, "utf8").trim();
+let text = raw;
+if (text.includes("=")) {
+  text = text.split("=")[1].trim();
+}
+if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+  text = text.slice(1, -1);
+}
 let ans = "";
 if (typeof Solution !== "undefined" && new Solution().reverseString) {
   ans = new Solution().reverseString(text);
@@ -251,7 +383,8 @@ public:
     pythonDriver: `
 if __name__ == "__main__":
     import sys
-    text = sys.stdin.read().strip()
+    raw = sys.stdin.read().strip()
+    text = _co_parse_str(raw, "s")
     sol = Solution() if 'Solution' in globals() else None
     if sol and hasattr(sol, 'isValid'):
         ans = sol.isValid(text)
@@ -261,11 +394,18 @@ if __name__ == "__main__":
         ans = solve(text)
     else:
         raise Exception("Function isValid not found")
-    print(str(ans).lower())
+    print(str(bool(ans)).lower())
 `,
     jsDriver: `
 const fs = require("fs");
-const text = fs.readFileSync(0, "utf8").trim();
+const raw = fs.readFileSync(0, "utf8").trim();
+let text = raw;
+if (text.includes("=")) {
+  text = text.split("=")[1].trim();
+}
+if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+  text = text.slice(1, -1);
+}
 let ans = false;
 if (typeof Solution !== "undefined" && new Solution().isValid) {
   ans = new Solution().isValid(text);
@@ -274,7 +414,7 @@ if (typeof Solution !== "undefined" && new Solution().isValid) {
 } else if (typeof solve === "function") {
   ans = solve(text);
 }
-console.log(String(ans));
+console.log(String(Boolean(ans)));
 `,
     javaDriver: `
 public class Main {
@@ -783,7 +923,45 @@ export function wrapCodeForExecution(
   const spec = LEETCODE_SPECS[problemId];
 
   if (language === "python") {
-    const header = `from __future__ import annotations\nimport sys\nfrom typing import List, Dict, Optional, Tuple, Set\n\n`;
+    const header = `from __future__ import annotations
+import sys, json, re
+from typing import List, Dict, Optional, Tuple, Set
+
+def _co_parse_array_int(raw, param_name="nums"):
+    m = re.search(rf'{param_name}\\s*=\\s*(\\[[^\\]]*\\])', raw)
+    if m:
+        try: return json.loads(m.group(1))
+        except Exception: pass
+    m_bracket = re.search(r'(\\[[^\\]]*\\])', raw)
+    if m_bracket:
+        try: return json.loads(m_bracket.group(1))
+        except Exception: pass
+    lines = [l.strip() for l in raw.splitlines() if l.strip()]
+    if lines:
+        return [int(x) for x in re.findall(r'-?\\d+', lines[0])]
+    return []
+
+def _co_parse_int(raw, param_name="target", default=0):
+    m = re.search(rf'{param_name}\\s*=\\s*(-?\\d+)', raw)
+    if m: return int(m.group(1))
+    lines = [l.strip() for l in raw.splitlines() if l.strip()]
+    if len(lines) > 1:
+        m2 = re.search(r'-?\\d+', lines[1])
+        if m2: return int(m2.group(0))
+    elif len(lines) == 1:
+        all_nums = [int(x) for x in re.findall(r'-?\\d+', lines[0])]
+        if len(all_nums) >= 2: return all_nums[-1]
+    return default
+
+def _co_parse_str(raw, param_name="s"):
+    raw_s = raw.strip()
+    if "=" in raw_s:
+        raw_s = raw_s.split("=", 1)[1].strip()
+    if (raw_s.startswith('"') and raw_s.endswith('"')) or (raw_s.startswith("'") and raw_s.endswith("'")):
+        return raw_s[1:-1]
+    return raw_s
+
+`;
     if (spec?.pythonDriver) {
       return `${header}${userCode}\n${spec.pythonDriver}`;
     }

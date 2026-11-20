@@ -25,6 +25,7 @@ const suites = [
   { file: "test-b2b-portal.mjs", title: "Milestone 9: B2B TPO Batch Analytics & Cryptographic Proof Badges" },
   { file: "test-phase2-growth.mjs", title: "Growth & Telemetry: Viral Loops, Health & NIRF Export" },
   { file: "adversarial-security-test.mjs", title: "Milestone 10 / Adversarial Audit: Payload Spoofing, RBAC, DPDP & Curriculum" },
+  { file: "test-leetcode-harness.mjs", title: "Milestone 11 / LeetCode Engine: Multi-Format Inputs, Driver Harness & CSP WASM" },
 ];
 
 let totalPassed = 0;

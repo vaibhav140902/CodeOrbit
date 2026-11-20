@@ -160,6 +160,7 @@ export function ProblemWorkspacePreview({
   const [mobileTab, setMobileTab] = useState<"problem" | "code" | "console">("problem");
   const skipAutosaveRef = useRef(true);
   const hasEditedSinceLoadRef = useRef(false);
+  const hasManuallySelectedLanguageRef = useRef(false);
 
   const editorTheme = resolvedTheme === "light" ? "codeorbit-light" : "codeorbit-dark";
   const guestMode = !authLoading && !user;
@@ -237,15 +238,57 @@ export function ProblemWorkspacePreview({
     };
   }, []);
 
+  const detectCodeLanguage = (source: string): "python" | "javascript" | "typescript" | "java" | "cpp" | null => {
+    const trimmed = source.trim();
+    if (!trimmed) return null;
+    if (
+      /^\s*def\s+[a-zA-Z0-9_]+\s*\(/m.test(trimmed) ||
+      /^\s*class\s+Solution\s*:\s*\n\s*def\s+/m.test(trimmed) ||
+      /:\s*list\[int\]/m.test(trimmed) ||
+      /\b(elif|enumerate|range|len)\s*\(/m.test(trimmed)
+    ) {
+      return "python";
+    }
+    if (
+      /public\s+(class\s+Solution|static|int\[\]|void|String|boolean)\b/m.test(trimmed) ||
+      /System\.out\.print/m.test(trimmed)
+    ) {
+      return "java";
+    }
+    if (
+      /#include\s*<[a-z]+>/m.test(trimmed) ||
+      /class\s+Solution\s*\{\s*public:/m.test(trimmed) ||
+      /std::/m.test(trimmed)
+    ) {
+      return "cpp";
+    }
+    if (/function\s+[a-zA-Z0-9_]+\s*\(/.test(trimmed) || /const\s+[a-zA-Z0-9_]+\s*=\s*\(/.test(trimmed)) {
+      if (/:\s*(number|string|boolean|void|any|number\[\])\b/.test(trimmed)) {
+        return "typescript";
+      }
+      return "javascript";
+    }
+    return null;
+  };
+
   // Load draft when problem or language changes
   useEffect(() => {
     const storedDraft = readLocalProblemDraft(problem.id, selectedLanguage);
     const nextRuntimeSpec = getProblemRuntimeSpec(problem);
+    const initialCode = storedDraft?.code ?? getTemplateForLanguage(problem, selectedLanguage);
+
+    if (!hasManuallySelectedLanguageRef.current) {
+      const detected = detectCodeLanguage(initialCode);
+      if (detected && detected !== selectedLanguage) {
+        setSelectedLanguage(detected);
+        return;
+      }
+    }
 
     skipAutosaveRef.current = true;
     hasEditedSinceLoadRef.current = false;
     setDraftHydrated(false);
-    setCode(storedDraft?.code ?? getTemplateForLanguage(problem, selectedLanguage));
+    setCode(initialCode);
     setCustomInput(storedDraft?.customInput ?? nextRuntimeSpec.sampleInput);
     setExpectedOutput(storedDraft?.expectedOutput ?? nextRuntimeSpec.expectedOutput);
     setAutosaveState("saved");
@@ -327,7 +370,7 @@ export function ProblemWorkspacePreview({
 
   const selectedLanguageLabel =
     languageOptions.find((option) => option.value === selectedLanguage)?.label ?? "TypeScript";
-  const premiumLocked = !billingSummary.premiumActive && problem.difficulty !== "Easy";
+  const premiumLocked = false; // 100% Free DSA Funnel: all 44 seeded DSA problems accessible with zero paywall blocks for all signed-in users
   const runtimeSpec = useMemo(() => getProblemRuntimeSpec(problem), [problem]);
 
   // Derived Company Context
@@ -353,9 +396,35 @@ export function ProblemWorkspacePreview({
     return ["Google India", "Microsoft IDC", "Amazon L5", "Flipkart Core"];
   }, [linkedTracks, problem.difficulty]);
 
+  const detectedLanguage = useMemo(() => detectCodeLanguage(code), [code]);
+  const hasLanguageMismatch = useMemo(() => {
+    if (!detectedLanguage) return false;
+    if (selectedLanguage === detectedLanguage) return false;
+    if (
+      (selectedLanguage === "javascript" && detectedLanguage === "typescript") ||
+      (selectedLanguage === "typescript" && detectedLanguage === "javascript")
+    ) {
+      return false;
+    }
+    return true;
+  }, [code, detectedLanguage, selectedLanguage]);
+
   const updateCode = (value: string) => {
     hasEditedSinceLoadRef.current = true;
     setAutosaveState("saving");
+
+    // Auto-switch on paste when untouched by manual selection
+    if (!hasManuallySelectedLanguageRef.current && value.length - code.length > 20) {
+      const detected = detectCodeLanguage(value);
+      if (detected && detected !== selectedLanguage) {
+        setSelectedLanguage(detected);
+        toast.info(
+          `Detected ${languageOptions.find((o) => o.value === detected)?.label ?? detected} syntax — switched editor runner.`,
+          "Language Auto-Detected"
+        );
+      }
+    }
+
     setCode(value);
   };
 
@@ -1041,8 +1110,11 @@ export function ProblemWorkspacePreview({
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <select
                     value={selectedLanguage}
-                    onChange={(event) => setSelectedLanguage(event.target.value)}
-                    className="field-select text-sm"
+                    onChange={(event) => {
+                      hasManuallySelectedLanguageRef.current = true;
+                      setSelectedLanguage(event.target.value);
+                    }}
+                    className="field-select text-sm font-medium"
                   >
                     {languageOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -1053,7 +1125,10 @@ export function ProblemWorkspacePreview({
                   <Button
                     variant="ghost"
                     className="text-xs"
-                    onClick={() => updateCode(getTemplateForLanguage(problem, selectedLanguage))}
+                    onClick={() => {
+                      hasManuallySelectedLanguageRef.current = true;
+                      updateCode(getTemplateForLanguage(problem, selectedLanguage));
+                    }}
                   >
                     Reset Template
                   </Button>
@@ -1079,6 +1154,37 @@ export function ProblemWorkspacePreview({
                   </Button>
                 </div>
               </div>
+
+              {/* Language Mismatch Safeguard Banner (Desktop & Mobile) */}
+              {hasLanguageMismatch && detectedLanguage && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">⚠️</span>
+                    <span>
+                      Your code appears to be{" "}
+                      <strong className="text-amber-300">
+                        {languageOptions.find((o) => o.value === detectedLanguage)?.label ?? detectedLanguage}
+                      </strong>
+                      , but the editor is configured for{" "}
+                      <strong className="text-amber-300">{selectedLanguageLabel}</strong>.
+                    </span>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    className="text-xs font-semibold text-amber-100 hover:bg-amber-500/25 border-amber-500/40"
+                    onClick={() => {
+                      hasManuallySelectedLanguageRef.current = true;
+                      setSelectedLanguage(detectedLanguage);
+                      toast.success(
+                        `Switched editor runner to ${languageOptions.find((o) => o.value === detectedLanguage)?.label}`,
+                        "Language Updated"
+                      );
+                    }}
+                  >
+                    Switch to {languageOptions.find((o) => o.value === detectedLanguage)?.label ?? detectedLanguage} →
+                  </Button>
+                </div>
+              )}
 
               {/* Monaco Editor Surface */}
               <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#0b1020]">
@@ -1273,6 +1379,35 @@ export function ProblemWorkspacePreview({
                         <pre className="max-h-20 overflow-auto whitespace-pre-wrap rounded bg-amber-950/40 p-2 font-mono text-xs text-amber-300 border border-amber-900/40">
                           {executionResult.compileOutput}
                         </pre>
+                      </div>
+                    )}
+
+                    {executionResult.status === "Accepted" && (
+                      <div className="mt-3 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/60 via-purple-950/50 to-slate-900/90 p-3.5 shadow-md">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center justify-center rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                                ✓ PASSED
+                              </span>
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
+                                Hiring Gauntlet Ready
+                              </span>
+                            </div>
+                            <h4 className="mt-1 text-xs font-bold text-white">
+                              Take the 4-Round Role Gauntlet (1,000-Pt Practical Fit Index)
+                            </h4>
+                            <p className="mt-0.5 text-[11px] text-slate-300 leading-relaxed">
+                              Proctored OA + Gemini AI voice code defense to earn your accredited hiring proof badge.
+                            </p>
+                          </div>
+                          <Link
+                            href="/gauntlet"
+                            className="btn-primary text-xs font-semibold py-2 px-3 text-center whitespace-nowrap shadow-sm self-start sm:self-center"
+                          >
+                            Enter Gauntlet →
+                          </Link>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { AppFrame } from "@/components/layout/app-frame";
 import { PricingOverview } from "@/components/pricing/pricing-overview";
 import { WaitlistForm } from "@/components/site/waitlist-form";
-import { publicPricingTiers } from "@/data/hiring-os";
 import { buildMetadata } from "@/lib/site-config";
 
 export const metadata: Metadata = buildMetadata({
@@ -27,40 +25,9 @@ export default function PricingPage() {
             </p>
           </section>
 
-          <section id="interview-sprint" className="grid gap-4 lg:grid-cols-4">
-            {publicPricingTiers.map((tier) => (
-              <article
-                key={tier.id}
-                className={`surface-card p-6 ${tier.spotlight ? "border-[color:var(--accent)]" : ""}`}
-              >
-                <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted">{tier.cadence}</p>
-                <h2 className="mt-3 text-2xl font-semibold">{tier.title}</h2>
-                <p className="mt-3 text-xl font-bold">{tier.priceLabel}</p>
-                <p className="mt-3 text-sm leading-7 text-soft">{tier.description}</p>
-                <ul className="mt-4 space-y-2 text-sm text-soft">
-                  {tier.features.map((feature) => (
-                    <li key={feature}>- {feature}</li>
-                  ))}
-                </ul>
-                <div className="mt-6">
-                  <Link
-                    href={
-                      tier.id === "free"
-                        ? "#secure-pricing"
-                        : tier.id === "pro"
-                          ? "#secure-pricing"
-                          : tier.id === "interview-sprint"
-                            ? "#interview-sprint-form"
-                            : "/for-recruiters"
-                    }
-                    className={tier.spotlight ? "btn-primary" : "btn-secondary"}
-                  >
-                    {tier.cta}
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </section>
+          <div id="secure-pricing">
+            <PricingOverview />
+          </div>
 
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <article className="surface-card p-6">

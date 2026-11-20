@@ -113,7 +113,15 @@ function LoginFormContent() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-soft">Password</label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm font-semibold text-soft">Password</label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-semibold text-[color:var(--accent)] hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 type="password"
                 placeholder="At least 6 characters"

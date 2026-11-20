@@ -138,8 +138,23 @@ export const adminSummarySchema = z.object({
   aiUsageToday: z.number().int().nonnegative(),
 });
 
-export const billingPlanIdSchema = z.enum(["free", "premium-monthly", "premium-lifetime"]);
-export const paidBillingPlanIdSchema = z.enum(["premium-monthly", "premium-lifetime"]);
+export const billingPlanIdSchema = z.enum([
+  "free",
+  "drive-booster-7d",
+  "sprint-pass-30d",
+  "season-pass-120d",
+  "interview-topup-5",
+  "premium-monthly",
+  "premium-lifetime",
+]);
+export const paidBillingPlanIdSchema = z.enum([
+  "drive-booster-7d",
+  "sprint-pass-30d",
+  "season-pass-120d",
+  "interview-topup-5",
+  "premium-monthly",
+  "premium-lifetime",
+]);
 
 export const billingSummarySchema = z.object({
   planId: billingPlanIdSchema,
